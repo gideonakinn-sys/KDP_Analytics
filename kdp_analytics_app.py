@@ -9,23 +9,20 @@ IMPORTANT NOTE ON SCRAPING
 Amazon actively blocks automated scraping and its markup changes constantly,
 so live scraping here is best-effort: it will work sometimes, from some IPs,
 for some pages, and will fail (timeout / CAPTCHA page / layout change)
-other times. This app NEVER attempts to bypass CAPTCHAs or bot-detection —
-if Amazon blocks the request, the app simply tells you and lets you fall
-back to manual entry or a demo dataset so you can still see the analytics
-engine work. For production use you'd want a paid scraping/data API
-(Keepa, Rainforest API, etc.) behind this same estimation engine.
+other times. This app NEVER attempts to bypass CAPTCHAs or bot-detection,
+and it NEVER fabricates data: if Amazon blocks the request, or a required
+field (like list price) can't be read, the app tells you and asks for the
+missing value instead of making one up. For production use you'd want a
+paid scraping/data API (Keepa, Rainforest API, etc.) behind this same engine.
 
 Run:
     pip install streamlit requests beautifulsoup4 plotly lxml
     streamlit run kdp_analytics_app.py
 """
 
-import hashlib
-import math
-import random
 import re
 import time
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, field
 from typing import Optional
 
 import requests
@@ -71,17 +68,10 @@ def extract_asin(raw: str) -> Optional[str]:
 # 2. DATA MODEL
 # --------------------------------------------------------------------------
 
-DEFAULT_PRICES = {
-    "Kindle": 9.99,
-    "Paperback": 12.99,
-    "Hardcover": 24.99,
-}
-
 PRICE_SOURCE_LABELS = {
     "live": "Scraped from Amazon",
-    "demo": "Demo sample",
-    "default": "Format default (price not found)",
     "manual": "Manual entry",
+    "missing": "Not found",
 }
 
 
@@ -96,38 +86,42 @@ class BookData:
     review_count: int
     bsr: int
     bsr_category: str
-    source: str  # "live" or "demo"
-    price_source: str = "demo"  # "live" | "demo" | "default" | "manual"
+    price_source: str = "missing"  # "live" | "manual" | "missing"
     page_count: Optional[int] = None
     subtitle: str = ""
     categories: list[str] = field(default_factory=list)
-
-
-def default_price_for_format(fmt: str) -> float:
-    return DEFAULT_PRICES.get(fmt, DEFAULT_PRICES["Kindle"])
-
-
-def ensure_price(book: BookData) -> BookData:
-    """Apply a format-aware default price when none was scraped or entered."""
-    if book.price <= 0:
-        book.price = default_price_for_format(book.format)
-        if book.price_source != "manual":
-            book.price_source = "default"
-    return book
 
 
 # --------------------------------------------------------------------------
 # 3. SCRAPER (best-effort, with graceful fallback)
 # --------------------------------------------------------------------------
 
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+]
+
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    ),
+    "User-Agent": USER_AGENTS[0],
     "Accept-Language": "en-US,en;q=0.9",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
 }
+
+
+def _headers(call_number: int) -> dict:
+    return {**HEADERS, "User-Agent": USER_AGENTS[call_number % len(USER_AGENTS)]}
+
+
+# Markers that indicate Amazon served us a bot check / CAPTCHA instead of the
+# product page. We never try to solve them — we just bail out and report it.
+BLOCK_MARKERS = [
+    "api-services-support@amazon.com",
+    "enter the characters you see below",
+    "captcha",
+    "robot check",
+    "to discuss automated access to amazon data",
+]
 
 
 PRICE_SELECTORS = [
@@ -163,27 +157,45 @@ def _parse_int(text: str) -> Optional[int]:
     return None
 
 
-def scrape_amazon_book(asin: str, timeout: int = 8) -> Optional[BookData]:
+def scrape_amazon_book(asin: str, timeout: int = 8, attempts: int = 2) -> tuple[Optional[BookData], Optional[str]]:
     """
     Best-effort live scrape of a public Amazon product page.
-    Returns None if the page can't be fetched or parsed (e.g. blocked,
-    CAPTCHA page, or layout Amazon doesn't recognize) — the caller
-    is expected to fall back to demo data or manual entry.
+    Returns (book, None) on success or (None, reason) on failure where
+    reason is one of: "timeout", "http <status>", "blocked", "layout".
+    Sanity: never fabricate data — on failure, the caller should tell
+    the user, not invent numbers.
     """
     url = f"https://www.amazon.com/dp/{asin}"
-    try:
-        resp = requests.get(url, headers=HEADERS, timeout=timeout)
-    except requests.RequestException:
-        return None
+    for attempt in range(attempts):
+        try:
+            resp = requests.get(url, headers=_headers(attempt), timeout=timeout)
+        except requests.RequestException:
+            if attempt == attempts - 1:
+                return None, "timeout"
+            time.sleep(0.8)
+            continue
 
-    if resp.status_code != 200:
-        return None
+        if resp.status_code != 200:
+            return None, f"http {resp.status_code}"
 
-    html = resp.text
-    # crude bot-block / CAPTCHA detection — do NOT attempt to solve, just bail out
-    if "api-services-support@amazon.com" in html or "Enter the characters you see below" in html:
-        return None
+        lowered = resp.text.lower()
+        if any(marker in lowered for marker in BLOCK_MARKERS):
+            if attempt == attempts - 1:
+                return None, "blocked"
+            time.sleep(0.8)
+            continue
 
+        book = _parse_book_page(resp.text, asin)
+        if book is None:
+            if attempt == attempts - 1:
+                return None, "layout"
+            time.sleep(0.8)
+            continue
+        return book, None
+    return None, "unknown"
+
+
+def _parse_book_page(html: str, asin: str) -> Optional[BookData]:
     soup = BeautifulSoup(html, "lxml")
 
     title_el = soup.select_one("#productTitle")
@@ -221,7 +233,7 @@ def scrape_amazon_book(asin: str, timeout: int = 8) -> Optional[BookData]:
     detail_bullets = soup.select_one("#detailBullets_feature_div") or soup.select_one("#productDetails_detailBullets_sections1")
     details_text = detail_bullets.get_text(" ", strip=True) if detail_bullets else ""
     if details_text:
-        m = re.search(r"#([\d,]+)\s+in\s+([A-Za-z &]+)", details_text)
+        m = re.search(r"#([\d,]+)\s+in\s+([A-Za-z0-9 &.']+)", details_text)
         if m:
             bsr = _parse_int(m.group(1))
             bsr_category = m.group(2).strip()
@@ -263,76 +275,7 @@ def scrape_amazon_book(asin: str, timeout: int = 8) -> Optional[BookData]:
         review_count=review_count or 0,
         bsr=bsr,
         bsr_category=bsr_category or "Books",
-        source="live",
-        price_source="live" if price else "default",
-        page_count=page_count,
-        subtitle=subtitle,
-        categories=categories,
-    )
-
-
-DEMO_TOPICS = [
-    "Marketing", "Productivity", "Fitness", "Cooking",
-    "Finance", "Writing", "Sales", "Habits", "Mindset", "Business",
-]
-DEMO_SUBTITLES = [
-    "A Practical Guide to Real-World Results",
-    "Proven Strategies for Beginners and Beyond",
-    "The Step-by-Step Playbook You Need",
-    "An Essential Resource for Modern Success",
-    "Simple, Actionable Advice That Works",
-]
-
-
-def _demo_rng(asin: str) -> random.Random:
-    """Deterministic per-ASIN RNG so demo data never changes between runs."""
-    seed = int(hashlib.sha1(asin.encode("utf-8")).hexdigest(), 16)
-    return random.Random(seed)
-
-
-def generate_demo_book(asin: str) -> BookData:
-    """
-    Deterministic, internally-consistent mock data so the estimation engine is
-    always demonstrable. BSR, review count and rating are correlated (better
-    rank -> more reviews -> a more established rating) rather than drawn at
-    random, so the numbers read as plausible instead of arbitrary.
-    """
-    rng = _demo_rng(asin)
-
-    fmt = rng.choice(["Kindle", "Paperback", "Hardcover"])
-    if fmt == "Kindle":
-        price = round(rng.uniform(2.99, 9.99), 2)
-        page_count = rng.randint(100, 450)
-    elif fmt == "Paperback":
-        price = round(rng.uniform(8.99, 14.99), 2)
-        page_count = rng.randint(150, 450)
-    else:
-        price = round(rng.uniform(18.99, 29.99), 2)
-        page_count = rng.randint(200, 500)
-
-    # Log-uniform BSR so the full ranking spectrum is represented.
-    bsr = int(round(10 ** rng.uniform(math.log10(500), math.log10(200_000))))
-    review_count = int(round(60_000 / math.sqrt(bsr)))
-    review_count = max(3, min(review_count, 60_000))
-    rating = round(min(4.9, 3.7 + 1.1 * min(1.0, review_count / 3000)), 1)
-
-    topic = rng.choice(DEMO_TOPICS)
-    subtitle = rng.choice(DEMO_SUBTITLES)
-    category = f"Books > Business & Money > {topic}"
-    categories = [category]
-
-    return BookData(
-        asin=asin,
-        title=f"The Complete {topic} Playbook ({asin})",
-        author="Demo Author",
-        format=fmt,
-        price=price,
-        rating=rating,
-        review_count=review_count,
-        bsr=bsr,
-        bsr_category="Books",
-        source="demo",
-        price_source="demo",
+        price_source="live" if price else "missing",
         page_count=page_count,
         subtitle=subtitle,
         categories=categories,
@@ -557,7 +500,8 @@ def fetch_related_searches(query: str, timeout: int = 5) -> list[str]:
             return []
         data = resp.json()
         return [s.get("value", "") for s in data.get("suggestions", []) if s.get("value")]
-    except (requests.RequestException, ValueError):
+    except Exception:
+        # Autocomplete is pure enrichment — it must never crash the app.
         return []
 
 
@@ -587,7 +531,7 @@ st.markdown(
 st.title("📚 KDP Book Analytics — MVP")
 st.caption(
     "Estimate sales, revenue and competition for any Amazon book from its URL or ASIN. "
-    "Live scraping is best-effort; the app falls back to demo data if Amazon blocks the request."
+    "Live scraping is best-effort; if Amazon blocks the request, the app tells you instead of showing guesses."
 )
 
 with st.sidebar:
@@ -596,18 +540,13 @@ with st.sidebar:
         "Amazon Book URL or ASIN",
         placeholder="https://www.amazon.com/dp/B0XXXXXXXXX  or  B0XXXXXXXXX",
     )
-    mode = st.radio(
-        "Data source",
-        ["Try live scrape → fallback to demo", "Force demo data (no network)"],
-        index=0,
-    )
     st.subheader("Price & format")
     manual_price = st.number_input(
         "List price ($)",
         min_value=0.0,
         value=0.0,
         step=0.5,
-        help="Leave at 0 to use scraped, demo, or format-default price.",
+        help="Required for royalty/revenue estimates. Fill in when Amazon's price wasn't scraped.",
     )
     format_override = st.selectbox(
         "Format",
@@ -632,36 +571,34 @@ if run:
         st.error("Couldn't find a valid 10-character ASIN in that input. Paste a full Amazon product URL or a bare ASIN like `B0CXXXXXXX`.")
     else:
         book = None
-        if mode.startswith("Try live"):
-            with st.spinner(f"Attempting live fetch for ASIN {asin}..."):
-                try:
-                    book = scrape_amazon_book(asin)
-                except Exception:
-                    book = None
-                time.sleep(0.3)
-            if book is None:
-                st.warning(
-                    "Live scrape didn't return usable data (Amazon may have blocked the request, "
-                    "shown a CAPTCHA, or changed its page layout). Falling back to demo data so you "
-                    "can still see the analytics engine in action."
-                )
-                book = generate_demo_book(asin)
+        reason = "unknown"
+        with st.spinner(f"Attempting live fetch for ASIN {asin}..."):
+            try:
+                book, reason = scrape_amazon_book(asin)
+            except Exception:
+                book, reason = None, "unknown"
+            time.sleep(0.3)
+
+        if book is None:
+            messages = {
+                "timeout": "Amazon didn't respond in time. Check the ASIN and try again.",
+                "blocked": "Amazon blocked the automated request (CAPTCHA / bot detection) from this server's IP — common on shared hosting. No data was fabricated. Try again, or run the app locally where live scraping is more likely to work.",
+                "layout": "The page loaded but its layout couldn't be parsed (Amazon changed its markup), so no data was generated.",
+            }
+            st.error(messages.get(reason or "unknown", f"Couldn't fetch data from Amazon ({reason}). Try again."))
+            st.session_state.book_data = None
         else:
-            book = generate_demo_book(asin)
+            if format_override != "Auto (from data)":
+                book.format = format_override
 
-        if format_override != "Auto (from data)":
-            book.format = format_override
+            if page_count_input and page_count_input > 0:
+                book.page_count = int(page_count_input)
 
-        if page_count_input and page_count_input > 0:
-            book.page_count = int(page_count_input)
+            if manual_price > 0:
+                book.price = manual_price
+                book.price_source = "manual"
 
-        if manual_price > 0:
-            book.price = manual_price
-            book.price_source = "manual"
-        else:
-            book = ensure_price(book)
-
-        st.session_state.book_data = book
+            st.session_state.book_data = book
 
 book: Optional[BookData] = st.session_state.book_data
 
@@ -678,17 +615,17 @@ monthly_royalty = monthly_sales * royalty_per_unit
 gross_monthly_revenue = monthly_sales * book.price
 comp_score, comp_label = competition_score(book.review_count, book.bsr)
 
-source_badge = "🟢 Live data" if book.source == "live" else "🟡 Demo / sample data"
 price_badge = PRICE_SOURCE_LABELS.get(book.price_source, book.price_source)
+price_missing = book.price <= 0
 st.markdown(f"### {book.title}")
 st.caption(
-    f"by {book.author} · {book.format} · ASIN `{book.asin}` · {source_badge} · Price: {price_badge}"
+    f"by {book.author} · {book.format} · ASIN `{book.asin}` · Price: {price_badge}"
 )
 
-if book.price_source == "default":
-    st.info(
-        f"List price was not found on Amazon. Using format default "
-        f"(${book.price:,.2f} for {book.format}). Enter a price in the sidebar for a more accurate revenue estimate."
+if price_missing:
+    st.warning(
+        "**List price not found.** Amazon didn't expose a price for this book. "
+        "Enter a list price in the sidebar and re-analyze to see royalty and revenue estimates."
     )
 
 st.divider()
@@ -700,16 +637,16 @@ with c1:
 with c2:
     st.metric("🗓️ Est. Monthly Sales", f"{monthly_sales:,.0f} units")
 with c3:
-    st.metric("💰 Est. Daily Royalty", f"${daily_royalty:,.2f}")
+    st.metric("💰 Est. Daily Royalty", "—" if price_missing else f"${daily_royalty:,.2f}")
 with c4:
-    st.metric("💰 Est. Monthly Royalty", f"${monthly_royalty:,.2f}")
+    st.metric("💰 Est. Monthly Royalty", "—" if price_missing else f"${monthly_royalty:,.2f}")
 with c5:
     st.metric("🏆 Best Sellers Rank", f"#{book.bsr:,}" if book.bsr else "N/A")
 
-if monthly_royalty == 0 and monthly_sales > 0:
+if not price_missing and monthly_royalty <= 0 and monthly_sales > 0:
     st.warning(
-        "Royalty is $0 because list price is unknown or too low for this format. "
-        "Enter a price in the sidebar and re-analyze."
+        "Royalty is $0 because this list price is too low for the format's printing cost. "
+        "Raise the list price in the sidebar and re-analyze."
     )
 
 st.divider()
@@ -721,16 +658,16 @@ with left:
     details = {
         "ASIN": book.asin,
         "Format": book.format,
-        "List Price": f"${book.price:,.2f}",
+        "List Price": "—" if price_missing else f"${book.price:,.2f}",
         "Price Source": PRICE_SOURCE_LABELS.get(book.price_source, book.price_source),
         "Page Count": f"{book.page_count:,}" if book.page_count else "Unknown",
         "Rating": f"{book.rating} / 5.0",
         "Review Count": f"{book.review_count:,}",
         "BSR Category": book.bsr_category,
-        "Est. Royalty / Unit": f"${royalty_per_unit:,.2f}",
-        "Est. Daily Royalty": f"${daily_royalty:,.2f}",
-        "Est. Monthly Royalty": f"${monthly_royalty:,.2f}",
-        "Gross Monthly Revenue": f"${gross_monthly_revenue:,.2f}",
+        "Est. Royalty / Unit": "—" if price_missing else f"${royalty_per_unit:,.2f}",
+        "Est. Daily Royalty": "—" if price_missing else f"${daily_royalty:,.2f}",
+        "Est. Monthly Royalty": "—" if price_missing else f"${monthly_royalty:,.2f}",
+        "Gross Monthly Revenue": "—" if price_missing else f"${gross_monthly_revenue:,.2f}",
     }
     st.table(details)
 
@@ -778,7 +715,6 @@ with right:
     st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("Sales Estimate Curve")
-    import math
     sample_ranks = [max(1, int(book.bsr * m)) for m in [0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 5]]
     sample_sales = [estimate_daily_sales(r) for r in sample_ranks]
     curve_fig = go.Figure(

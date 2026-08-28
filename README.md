@@ -12,7 +12,7 @@ streamlit run kdp_analytics_app.py
 ## Features
 
 - Parse Amazon product URLs or bare ASINs
-- Best-effort live scrape with graceful fallback to deterministic demo data
+- Best-effort live scrape with retries and clear failure reporting
 - BSR-based sales estimation via log-log power-law interpolation
 - KDP royalty estimates (Kindle 70%/35% tiers; print books use KDP's published fixed + per-page cost structure, page-count aware)
 - Daily & monthly royalty estimates, plus gross revenue (list price × sales) for clarity
@@ -21,9 +21,9 @@ streamlit run kdp_analytics_app.py
 
 ## Scraping note
 
-Amazon actively blocks automated scraping and its markup changes frequently. Live scraping is best-effort only — the app never attempts to bypass CAPTCHAs or bot detection. If a request is blocked, use demo mode or enter price/format manually in the sidebar.
+Amazon actively blocks automated scraping and its markup changes frequently. Live scraping is best-effort only — the app never attempts to bypass CAPTCHAs or bot detection.
 
-When a live scrape finds BSR but misses the list price, the app applies a format-default price (Kindle $9.99, Paperback $12.99, Hardcover $24.99) so monthly revenue is still estimated. Enter a list price in the sidebar for accurate royalty calculations.
+The app **never fabricates data.** If a request is blocked (CAPTCHA / bot detection), times out, or the page layout can't be parsed, it reports the reason and shows no estimates. If a book scrapes fine but the list price can't be read, royalty and revenue figures show "—" until you enter a price in the sidebar. Hosting on shared IPs (e.g. Streamlit Community Cloud) is blocked far more often than scraping from your own machine.
 
 ## Revenue vs royalty
 
