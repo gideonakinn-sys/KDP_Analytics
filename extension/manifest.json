@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "minimum_chrome_version": "114",
+  "name": "KDP Book Analytics — Side Panel",
+  "version": "0.2.0",
+  "description": "Estimate KDP sales, royalty and competition for an Amazon book in a native Chrome side panel.",
+  "permissions": ["sidePanel", "storage", "activeTab"],
+  "host_permissions": ["https://completion.amazon.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open KDP Analytics",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.amazon.com/*",
+        "https://www.amazon.co.uk/*",
+        "https://www.amazon.ca/*",
+        "https://www.amazon.com.au/*",
+        "https://www.amazon.de/*",
+        "https://www.amazon.co.jp/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

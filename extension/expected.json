@@ -1,0 +1,1291 @@
+[
+  {
+    "input": {
+      "asin": "B0X1",
+      "title": "The Complete Marketing Playbook",
+      "subtitle": "A Practical Handbook",
+      "categories": [
+        "Books",
+        "Business & Money",
+        "Marketing"
+      ],
+      "format": "Paperback",
+      "price": 12.99,
+      "rating": 4.5,
+      "reviewCount": 1230,
+      "bsr": 12345,
+      "pageCount": 320
+    },
+    "expected": {
+      "dailySales": 6.015902225428994,
+      "monthlySales": 180.47706676286984,
+      "royaltyPerUnit": 2.9539999999999997,
+      "dailyRoyalty": 17.770975173917247,
+      "monthlyRoyalty": 533.1292552175174,
+      "grossMonthlyRevenue": 2344.397097249679,
+      "compScore": 74,
+      "compLabel": "High Competition",
+      "priceMissing": false,
+      "pageCountMissing": false,
+      "royaltyUnknown": false,
+      "printCost": 4.84,
+      "keywords": [
+        {
+          "keyword": "complete marketing",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.9
+        },
+        {
+          "keyword": "marketing playbook",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.9
+        },
+        {
+          "keyword": "marketing",
+          "source": "Category / Title",
+          "count": 2,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "practical handbook",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "complete",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "playbook",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "books business",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "business money",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "money marketing",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "handbook",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "practical",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "books",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "business",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "money",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        }
+      ]
+    }
+  },
+  {
+    "input": {
+      "asin": "B0X2",
+      "title": "Deep Work Habits",
+      "subtitle": "Proven Strategies for Focus",
+      "categories": [
+        "Books",
+        "Self-Help"
+      ],
+      "format": "Kindle",
+      "price": 9.99,
+      "rating": 4.8,
+      "reviewCount": 5000,
+      "bsr": 1,
+      "pageCount": 240
+    },
+    "expected": {
+      "dailySales": 3000,
+      "monthlySales": 90000,
+      "royaltyPerUnit": 6.842999999999999,
+      "dailyRoyalty": 20528.999999999996,
+      "monthlyRoyalty": 615869.9999999999,
+      "grossMonthlyRevenue": 899100.0,
+      "compScore": 100,
+      "compLabel": "High Competition",
+      "priceMissing": false,
+      "pageCountMissing": false,
+      "royaltyUnknown": false,
+      "printCost": null,
+      "keywords": [
+        {
+          "keyword": "deep work",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.9
+        },
+        {
+          "keyword": "work habits",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.9
+        },
+        {
+          "keyword": "proven strategies",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "deep",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "habits",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "work",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "books self-help",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "focus",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "proven",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "strategies",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "books",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "self-help",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        }
+      ]
+    }
+  },
+  {
+    "input": {
+      "asin": "B0X3",
+      "title": "Cooking on a Budget",
+      "subtitle": "Simple Meals That Work",
+      "categories": [
+        "Books",
+        "Cooking"
+      ],
+      "format": "Kindle",
+      "price": 15.0,
+      "rating": 4.2,
+      "reviewCount": 88,
+      "bsr": 500000,
+      "pageCount": 220
+    },
+    "expected": {
+      "dailySales": 0.22,
+      "monthlySales": 6.6,
+      "royaltyPerUnit": 5.25,
+      "dailyRoyalty": 1.155,
+      "monthlyRoyalty": 34.65,
+      "grossMonthlyRevenue": 99.0,
+      "compScore": 3,
+      "compLabel": "Low Competition",
+      "priceMissing": false,
+      "pageCountMissing": false,
+      "royaltyUnknown": false,
+      "printCost": null,
+      "keywords": [
+        {
+          "keyword": "cooking",
+          "source": "Category / Title",
+          "count": 2,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "simple meals",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "budget",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "books cooking",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "meals",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "simple",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "work",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "books",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        }
+      ]
+    }
+  },
+  {
+    "input": {
+      "asin": "B0X4",
+      "title": "Fitness Foundations",
+      "subtitle": "An Essential Resource",
+      "categories": [
+        "Books",
+        "Health & Fitness"
+      ],
+      "format": "Hardcover",
+      "price": 24.99,
+      "rating": 4.6,
+      "reviewCount": 900,
+      "bsr": 500,
+      "pageCount": 200
+    },
+    "expected": {
+      "dailySales": 70.00000000000003,
+      "monthlySales": 2100.000000000001,
+      "royaltyPerUnit": 6.943999999999997,
+      "dailyRoyalty": 486.08,
+      "monthlyRoyalty": 14582.400000000001,
+      "grossMonthlyRevenue": 52479.00000000002,
+      "compScore": 67,
+      "compLabel": "High Competition",
+      "priceMissing": false,
+      "pageCountMissing": false,
+      "royaltyUnknown": false,
+      "printCost": 8.05,
+      "keywords": [
+        {
+          "keyword": "fitness foundations",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.9
+        },
+        {
+          "keyword": "fitness",
+          "source": "Category / Title",
+          "count": 2,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "essential resource",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "foundations",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "books health",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "health fitness",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "essential",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "resource",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "books",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "health",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        }
+      ]
+    }
+  },
+  {
+    "input": {
+      "asin": "B0X5",
+      "title": "Budget Investments",
+      "subtitle": "Practical Money How-To",
+      "categories": [
+        "Books",
+        "Business & Money",
+        "Personal Finance"
+      ],
+      "format": "Hardcover",
+      "price": 14.99,
+      "rating": 3.9,
+      "reviewCount": 12,
+      "bsr": 95000,
+      "pageCount": 500
+    },
+    "expected": {
+      "dailySales": 1.1578947368421049,
+      "monthlySales": 34.73684210526314,
+      "royaltyPerUnit": 0.0,
+      "dailyRoyalty": 0.0,
+      "monthlyRoyalty": 0.0,
+      "grossMonthlyRevenue": 520.7052631578945,
+      "compScore": 21,
+      "compLabel": "Low Competition",
+      "priceMissing": false,
+      "pageCountMissing": false,
+      "royaltyUnknown": false,
+      "printCost": 11.65,
+      "keywords": [
+        {
+          "keyword": "budget investments",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.9
+        },
+        {
+          "keyword": "money how-to",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "practical money",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "budget",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "investments",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "money",
+          "source": "Category / Subtitle",
+          "count": 2,
+          "confidence": 0.69
+        },
+        {
+          "keyword": "books business",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "business money",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "money personal",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "personal finance",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "how-to",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "practical",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "books",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "business",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "finance",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "personal",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        }
+      ]
+    }
+  },
+  {
+    "input": {
+      "asin": "B0X6",
+      "title": "Tiny Plays for Kids",
+      "subtitle": "Short Skits to Perform",
+      "categories": [
+        "Books",
+        "Arts & Photography"
+      ],
+      "format": "Paperback",
+      "price": 2.99,
+      "rating": 4.0,
+      "reviewCount": 41,
+      "bsr": 200000,
+      "pageCount": 300
+    },
+    "expected": {
+      "dailySales": 0.6058427662093653,
+      "monthlySales": 18.17528298628096,
+      "royaltyPerUnit": 0.0,
+      "dailyRoyalty": 0.0,
+      "monthlyRoyalty": 0.0,
+      "grossMonthlyRevenue": 54.34409612898007,
+      "compScore": 1,
+      "compLabel": "Low Competition",
+      "priceMissing": false,
+      "pageCountMissing": false,
+      "royaltyUnknown": false,
+      "printCost": 4.6,
+      "keywords": [
+        {
+          "keyword": "tiny plays",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.9
+        },
+        {
+          "keyword": "short skits",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "kids",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "plays",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "tiny",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "arts photography",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "books arts",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "perform",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "short",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "skits",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "arts",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "books",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "photography",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        }
+      ]
+    }
+  },
+  {
+    "input": {
+      "asin": "B0X7",
+      "title": "Tiny Tales",
+      "subtitle": "A Small Book of Stories",
+      "categories": [
+        "Books",
+        "Literature & Fiction"
+      ],
+      "format": "Paperback",
+      "price": 2.99,
+      "rating": 4.0,
+      "reviewCount": 5,
+      "bsr": 89900,
+      "pageCount": 90
+    },
+    "expected": {
+      "dailySales": 1.2235817575083427,
+      "monthlySales": 36.707452725250285,
+      "royaltyPerUnit": 0.0,
+      "dailyRoyalty": 0.0,
+      "monthlyRoyalty": 0.0,
+      "grossMonthlyRevenue": 109.75528364849836,
+      "compScore": 22,
+      "compLabel": "Low Competition",
+      "priceMissing": false,
+      "pageCountMissing": false,
+      "royaltyUnknown": false,
+      "printCost": 2.3,
+      "keywords": [
+        {
+          "keyword": "tiny tales",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.9
+        },
+        {
+          "keyword": "small book",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "tales",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "tiny",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "books literature",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "literature fiction",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "book",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "small",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "stories",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "books",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "fiction",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "literature",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        }
+      ]
+    }
+  },
+  {
+    "input": {
+      "asin": "B0X8",
+      "title": "Word of Mouth Sales",
+      "subtitle": "Proven Sales Tactics",
+      "categories": [
+        "Books",
+        "Business & Money",
+        "Sales"
+      ],
+      "format": "Kindle",
+      "price": 2.99,
+      "rating": 4.7,
+      "reviewCount": 30000,
+      "bsr": 10,
+      "pageCount": 160
+    },
+    "expected": {
+      "dailySales": 999.9999999999998,
+      "monthlySales": 29999.999999999993,
+      "royaltyPerUnit": 1.943,
+      "dailyRoyalty": 1942.9999999999995,
+      "monthlyRoyalty": 58289.999999999985,
+      "grossMonthlyRevenue": 89699.99999999999,
+      "compScore": 100,
+      "compLabel": "High Competition",
+      "priceMissing": false,
+      "pageCountMissing": false,
+      "royaltyUnknown": false,
+      "printCost": null,
+      "keywords": [
+        {
+          "keyword": "mouth sales",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.9
+        },
+        {
+          "keyword": "sales",
+          "source": "Category / Subtitle / Title",
+          "count": 3,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "proven sales",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "sales tactics",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "mouth",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "word",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "books business",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "business money",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "money sales",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "proven",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "tactics",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "books",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "business",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "money",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        }
+      ]
+    }
+  },
+  {
+    "input": {
+      "asin": "B0X9",
+      "title": "Long Tail Marketing",
+      "subtitle": "How to Succeed at Scale",
+      "categories": [
+        "Books",
+        "Business & Money",
+        "Marketing"
+      ],
+      "format": "Kindle",
+      "price": 8.99,
+      "rating": 4.4,
+      "reviewCount": 2600,
+      "bsr": 1000000,
+      "pageCount": 300
+    },
+    "expected": {
+      "dailySales": 0.06,
+      "monthlySales": 1.7999999999999998,
+      "royaltyPerUnit": 6.143,
+      "dailyRoyalty": 0.36857999999999996,
+      "monthlyRoyalty": 11.057399999999998,
+      "grossMonthlyRevenue": 16.182,
+      "compScore": 60,
+      "compLabel": "High Competition",
+      "priceMissing": false,
+      "pageCountMissing": false,
+      "royaltyUnknown": false,
+      "printCost": null,
+      "keywords": [
+        {
+          "keyword": "long tail",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.9
+        },
+        {
+          "keyword": "tail marketing",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.9
+        },
+        {
+          "keyword": "marketing",
+          "source": "Category / Title",
+          "count": 2,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "long",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "tail",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "books business",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "business money",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "money marketing",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "scale",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "succeed",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "books",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "business",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "money",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        }
+      ]
+    }
+  },
+  {
+    "input": {
+      "asin": "B0X10",
+      "title": "Niche Ideas",
+      "subtitle": "Find a Market That Works",
+      "categories": [
+        "Books",
+        "Business & Money"
+      ],
+      "format": "Kindle",
+      "price": 0.0,
+      "rating": 4.1,
+      "reviewCount": 77,
+      "bsr": 15000,
+      "pageCount": 200
+    },
+    "expected": {
+      "dailySales": 5.2294885872742976,
+      "monthlySales": 156.8846576182289,
+      "royaltyPerUnit": 0.0,
+      "dailyRoyalty": null,
+      "monthlyRoyalty": null,
+      "grossMonthlyRevenue": 0.0,
+      "compScore": 39,
+      "compLabel": "Moderate Competition",
+      "priceMissing": true,
+      "pageCountMissing": false,
+      "royaltyUnknown": true,
+      "printCost": null,
+      "keywords": [
+        {
+          "keyword": "niche ideas",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.9
+        },
+        {
+          "keyword": "find market",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "ideas",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "niche",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "books business",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "business money",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "find",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "market",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "works",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "books",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "business",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "money",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        }
+      ]
+    }
+  },
+  {
+    "input": {
+      "asin": "B0X11",
+      "title": "Classic Reprint",
+      "subtitle": "A Short Anthology",
+      "categories": [
+        "Books",
+        "Literature & Fiction"
+      ],
+      "format": "Paperback",
+      "price": 11.5,
+      "rating": 4.3,
+      "reviewCount": 420,
+      "bsr": 250000,
+      "pageCount": null
+    },
+    "expected": {
+      "dailySales": 0.5000000000000001,
+      "monthlySales": 15.000000000000004,
+      "royaltyPerUnit": null,
+      "dailyRoyalty": null,
+      "monthlyRoyalty": null,
+      "grossMonthlyRevenue": 172.50000000000003,
+      "compScore": 13,
+      "compLabel": "Low Competition",
+      "priceMissing": false,
+      "pageCountMissing": true,
+      "royaltyUnknown": true,
+      "printCost": null,
+      "keywords": [
+        {
+          "keyword": "classic reprint",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.9
+        },
+        {
+          "keyword": "short anthology",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "classic",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "reprint",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "books literature",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "literature fiction",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "anthology",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "short",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "books",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "fiction",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "literature",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        }
+      ]
+    }
+  },
+  {
+    "input": {
+      "asin": "B0X12",
+      "title": "Marketing Mastery",
+      "subtitle": "The Step-by-Step Playbook You Need",
+      "categories": [
+        "Books",
+        "Business & Money",
+        "Marketing"
+      ],
+      "format": "Hardcover",
+      "price": 29.99,
+      "rating": 4.9,
+      "reviewCount": 60000,
+      "bsr": 120,
+      "pageCount": 420
+    },
+    "expected": {
+      "dailySales": 177.57456879572257,
+      "monthlySales": 5327.2370638716775,
+      "royaltyPerUnit": 7.3039999999999985,
+      "dailyRoyalty": 1297.0046504839574,
+      "monthlyRoyalty": 38910.13951451873,
+      "grossMonthlyRevenue": 159763.8395455116,
+      "compScore": 100,
+      "compLabel": "High Competition",
+      "priceMissing": false,
+      "pageCountMissing": false,
+      "royaltyUnknown": false,
+      "printCost": 10.690000000000001,
+      "keywords": [
+        {
+          "keyword": "marketing mastery",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.9
+        },
+        {
+          "keyword": "marketing",
+          "source": "Category / Title",
+          "count": 2,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "step-by-step playbook",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.77
+        },
+        {
+          "keyword": "mastery",
+          "source": "Title",
+          "count": 1,
+          "confidence": 0.72
+        },
+        {
+          "keyword": "books business",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "business money",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "money marketing",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.68
+        },
+        {
+          "keyword": "need",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "playbook",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "step-by-step",
+          "source": "Subtitle",
+          "count": 1,
+          "confidence": 0.64
+        },
+        {
+          "keyword": "books",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "business",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        },
+        {
+          "keyword": "money",
+          "source": "Category",
+          "count": 1,
+          "confidence": 0.58
+        }
+      ]
+    }
+  }
+]

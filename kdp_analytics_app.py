@@ -332,33 +332,40 @@ def estimate_daily_sales(bsr: int) -> float:
 # "Paperback Printing Cost" / "Hardcover Printing Cost" help pages:
 #   Paperback: 24–110 pages → fixed $2.30; 110–828 pages → $1.00 + $0.012/page
 #   Hardcover: 75–108 pages → fixed $6.80; 110–550 pages → $5.65 + $0.012/page
-# Fallback page counts apply when a page count wasn't scraped/entered.
+# A missing page count means NO estimated print royalty (see print_cost_for).
 PRINT_COST_RULES = {
-    "Paperback": {"fixed_low": 2.30, "low_max_pages": 110, "fixed": 1.00, "per_page": 0.012, "default_pages": 250},
-    "Hardcover": {"fixed_low": 6.80, "low_max_pages": 108, "fixed": 5.65, "per_page": 0.012, "default_pages": 300},
+    "Paperback": {"fixed_low": 2.30, "low_max_pages": 110, "fixed": 1.00, "per_page": 0.012},
+    "Hardcover": {"fixed_low": 6.80, "low_max_pages": 108, "fixed": 5.65, "per_page": 0.012},
 }
 
 
-def print_cost_for(fmt: str, page_count: Optional[int] = None) -> float:
+def print_cost_for(fmt: str, page_count: Optional[int] = None) -> Optional[float]:
+    """
+    KDP printing cost per unit (Amazon.com, black ink, regular trim).
+    Returns None when the page count is unknown (print royalty can't be
+    estimated without it — the app never silently assumes a page count).
+    """
     rule = PRINT_COST_RULES.get(fmt)
     if not rule:
-        return 0.0
-    pages = page_count if page_count and page_count > 0 else rule["default_pages"]
+        return None
+    pages = page_count if page_count and page_count > 0 else None
+    if pages is None:
+        return None
     if pages <= rule["low_max_pages"]:
         return rule["fixed_low"]
     return rule["fixed"] + rule["per_page"] * pages
 
 
-def estimate_royalty_per_unit(price: float, fmt: str, page_count: Optional[int] = None) -> float:
-    """Approximate KDP royalty per unit sold."""
+def estimate_royalty_per_unit(price: float, fmt: str, page_count: Optional[int] = None) -> Optional[float]:
+    """Approximate KDP royalty per unit sold. None means 'unknown' (a print
+    book with no page count), which the UI renders as '—' rather than a guess."""
     if price <= 0:
         return 0.0
 
     if fmt == "Kindle":
         if 2.99 <= price <= 9.99:
             # 70% royalty tier, minus an approximate delivery fee
-            # (assume a ~3MB file at $0.15/MB ≈ $0.45; many books are far
-            # smaller, so we use a conservative flat estimate of $0.15)
+            # (a flat ~$0.15 assumes a ~1MB ebook; KDP charges per MB)
             delivery_fee = 0.15
             royalty = price * 0.70 - delivery_fee
         else:
@@ -367,8 +374,11 @@ def estimate_royalty_per_unit(price: float, fmt: str, page_count: Optional[int] 
         return max(royalty, 0.0)
 
     # Print royalty ≈ 60% of list price minus KDP's actual printing cost.
-    royalty = price * 0.60 - print_cost_for(fmt, page_count)
-    return max(royalty, 0.0)
+    # Page count is required for print — no count, no estimated royalty.
+    cost = print_cost_for(fmt, page_count)
+    if cost is None:
+        return None
+    return max(price * 0.60 - cost, 0.0)
 
 
 def competition_score(review_count: int, bsr: int) -> tuple[int, str]:
@@ -558,7 +568,7 @@ with st.sidebar:
         min_value=0,
         value=0,
         step=1,
-        help="Optional — used for a more accurate print royalty (KDP's fixed + per-page cost). Leave at 0 to auto-detect from Amazon.",
+        help="Required for print royalty (KDP's fixed + per-page cost). Leave at 0 to auto-detect, or enter it if the scrape misses it.",
     )
     run = st.button("Analyze Book", type="primary", use_container_width=True)
 
@@ -607,16 +617,23 @@ if book is None:
     st.stop()
 
 # --- Run estimation engine ---
+price_missing = book.price <= 0
+page_count_missing = (
+    book.format in ("Paperback", "Hardcover")
+    and not (book.page_count and book.page_count > 0)
+)
+royalty_unknown = price_missing or page_count_missing
+
 royalty_per_unit = estimate_royalty_per_unit(book.price, book.format, book.page_count)
+print_cost = print_cost_for(book.format, book.page_count) if book.format in ("Paperback", "Hardcover") else None
 daily_sales = estimate_daily_sales(book.bsr)
 monthly_sales = daily_sales * 30
-daily_royalty = daily_sales * royalty_per_unit
-monthly_royalty = monthly_sales * royalty_per_unit
+daily_royalty = None if royalty_per_unit is None else daily_sales * royalty_per_unit
+monthly_royalty = None if royalty_per_unit is None else monthly_sales * royalty_per_unit
 gross_monthly_revenue = monthly_sales * book.price
 comp_score, comp_label = competition_score(book.review_count, book.bsr)
 
 price_badge = PRICE_SOURCE_LABELS.get(book.price_source, book.price_source)
-price_missing = book.price <= 0
 st.markdown(f"### {book.title}")
 st.caption(
     f"by {book.author} · {book.format} · ASIN `{book.asin}` · Price: {price_badge}"
@@ -626,6 +643,11 @@ if price_missing:
     st.warning(
         "**List price not found.** Amazon didn't expose a price for this book. "
         "Enter a list price in the sidebar and re-analyze to see royalty and revenue estimates."
+    )
+elif page_count_missing:
+    st.warning(
+        "**Page count not found.** Print royalty needs it (KDP charges a per-page print cost). "
+        "Enter a page count in the sidebar and re-analyze to see royalty and revenue estimates."
     )
 
 st.divider()
@@ -637,13 +659,18 @@ with c1:
 with c2:
     st.metric("🗓️ Est. Monthly Sales", f"{monthly_sales:,.0f} units")
 with c3:
-    st.metric("💰 Est. Daily Royalty", "—" if price_missing else f"${daily_royalty:,.2f}")
+    st.metric("💰 Est. Daily Royalty", "—" if royalty_unknown else f"${daily_royalty:,.2f}")
 with c4:
-    st.metric("💰 Est. Monthly Royalty", "—" if price_missing else f"${monthly_royalty:,.2f}")
+    st.metric("💰 Est. Monthly Royalty", "—" if royalty_unknown else f"${monthly_royalty:,.2f}")
 with c5:
     st.metric("🏆 Best Sellers Rank", f"#{book.bsr:,}" if book.bsr else "N/A")
 
-if not price_missing and monthly_royalty <= 0 and monthly_sales > 0:
+if (
+        not royalty_unknown
+        and monthly_royalty is not None
+        and monthly_royalty <= 0
+        and monthly_sales > 0
+    ):
     st.warning(
         "Royalty is $0 because this list price is too low for the format's printing cost. "
         "Raise the list price in the sidebar and re-analyze."
@@ -660,13 +687,16 @@ with left:
         "Format": book.format,
         "List Price": "—" if price_missing else f"${book.price:,.2f}",
         "Price Source": PRICE_SOURCE_LABELS.get(book.price_source, book.price_source),
-        "Page Count": f"{book.page_count:,}" if book.page_count else "Unknown",
+        "Page Count": f"{book.page_count:,}" if book.page_count else ("Required (print)" if page_count_missing else "Unknown"),
         "Rating": f"{book.rating} / 5.0",
         "Review Count": f"{book.review_count:,}",
         "BSR Category": book.bsr_category,
-        "Est. Royalty / Unit": "—" if price_missing else f"${royalty_per_unit:,.2f}",
-        "Est. Daily Royalty": "—" if price_missing else f"${daily_royalty:,.2f}",
-        "Est. Monthly Royalty": "—" if price_missing else f"${monthly_royalty:,.2f}",
+        "Est. Print Cost / Unit": (
+            "—" if print_cost is None else f"${print_cost:,.2f}"
+        ),
+        "Est. Royalty / Unit": "—" if royalty_unknown else f"${royalty_per_unit:,.2f}",
+        "Est. Daily Royalty": "—" if royalty_unknown else f"${daily_royalty:,.2f}",
+        "Est. Monthly Royalty": "—" if royalty_unknown else f"${monthly_royalty:,.2f}",
         "Gross Monthly Revenue": "—" if price_missing else f"${gross_monthly_revenue:,.2f}",
     }
     st.table(details)
@@ -682,7 +712,8 @@ with left:
   royalty tier minus an approximate delivery fee; books outside that range
   use the 35% tier. Paperbacks/hardcovers pay **60% of list price minus KDP's
   actual printing cost** (fixed cost + per-page cost from KDP's published
-  pricing, using the page count scraped from Amazon or entered in the sidebar).
+  pricing). A page count is **required** for print books — if it isn't scraped
+  or entered, royalty shows **"—"** rather than a guess.
 - **Revenue vs royalty**: royalty per unit × sales = **your earnings**
   (daily/monthly royalty); list price × sales = **gross revenue** (what Amazon
   collects). Both are shown.
