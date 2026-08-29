@@ -12,14 +12,14 @@ your manuscript anywhere on your behalf.**
 
 ## What Bookmata reads
 
-- **Your open Amazon page.** While you are on an Amazon product page
+- **Your open Amazon page:** While you are on an Amazon product page
   (`amazon.com`, `.co.uk`, `.ca`, `.com.au`, `.de`, `.co.jp`), a content script
   reads the fields of *that page you have already loaded* — title, price,
   rating, review count, Best Sellers Rank, print length, category — to compute
   estimates **locally in your browser**. It does not browse on your behalf, does
   not submit search queries, does not access your account, and does not read
   other tabs or pages.
-- **Content you paste.** The Formatter only processes text/HTML you paste or
+- **Content you paste:** The Formatter only processes text/HTML you paste or
   type into the extension. It does not pull manuscripts from anywhere.
 
 ## What is stored, and where
