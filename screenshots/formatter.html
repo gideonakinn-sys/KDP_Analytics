@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bookmata — Formatter (screenshot mockup)</title>
+    <link rel="stylesheet" href="../extension/sidepanel.css" />
+    <link rel="stylesheet" href="../extension/formatter.css" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #eef0f3;
+      }
+      .stage {
+        display: flex;
+        width: 1280px;
+        height: 800px;
+        background: #eef0f3;
+      }
+      .page {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+      }
+      .page .ph {
+        text-align: center;
+        color: #9ca3af;
+        font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+        font-size: 14px;
+      }
+      .panel {
+        width: 400px;
+        height: 800px;
+        overflow: hidden;
+        border-left: 1px solid #e5e7eb;
+        background: #fff;
+      }
+      .panel .kdp-fmt-scroll {
+        height: calc(100% - 108px);
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="page">
+        <div class="ph">
+          <div style="font-size: 26px; font-weight: 700; color: #374151">Your manuscript</div>
+          <div>…any text, any AI, one click to publish-ready files.</div>
+        </div>
+      </div>
+      <div class="panel">
+        <div id="kdp-header"><span>📚 Bookmata</span></div>
+        <nav id="kdp-tabs">
+          <button type="button">Analytics</button>
+          <button type="button" class="active">Formatter</button>
+        </nav>
+        <div class="kdp-fmt-root">
+          <div class="kdp-fmt-scroll">
+            <div class="kdp-section">Target format</div>
+            <div class="kdp-targets">
+              <button type="button" class="kdp-pill" aria-pressed="false">Kindle</button>
+              <button type="button" class="kdp-pill active" aria-pressed="true">Paperback</button>
+              <button type="button" class="kdp-pill" aria-pressed="false">Hardcover</button>
+              <button type="button" class="kdp-pill" aria-pressed="false">Apple Books</button>
+            </div>
+
+            <div class="kdp-section">Content</div>
+            <div class="kdp-mode-row">
+              <label class="kdp-muted" for="x-mode2">Input type</label>
+              <select id="x-mode2"><option>Raw text / Markdown</option></select>
+            </div>
+            <textarea id="x-fmt-text" rows="10" placeholder="Paste your manuscript here…">Chapter One
+
+The hero woke to a bell of chimes and the smell of rain on stone.
+
+*The road ahead* was long, and *he* was not ready.
+
+Chapter Two
+
+By dusk the mountain had swallowed the sun, and the company pressed on.</textarea>
+            <div class="kdp-wc-row"><span class="kdp-muted">43 words</span></div>
+            <div class="kdp-fmt-row">
+              <button type="button" class="kdp-btn" id="x-prompt">Copy AI prompt</button>
+              <span class="kdp-muted">Optional: let an AI pre-structure a draft.</span>
+            </div>
+
+            <div class="kdp-section">Options</div>
+            <div class="kdp-opts">
+              <div class="kdp-field"><label for="x-title">Title</label><input id="x-title" type="text" value="The Hero of a Thousand Pages" /></div>
+              <div class="kdp-field"><label for="x-auth">Author</label><input id="x-auth" type="text" value="Rowan Alistair" /></div>
+              <div class="kdp-field"><label for="x-trim">Trim size</label><select id="x-trim"><option selected>Book 6×9</option><option>Book 5.5×8.5</option></select></div>
+              <div class="kdp-field"><label for="x-sp">Line spacing</label><select id="x-sp"><option>Single (1.0)</option><option selected>1.15</option><option>1.5</option></select></div>
+            </div>
+
+            <button type="button" class="kdp-btn kdp-btn-primary" id="x-run">Format</button>
+
+            <div id="kdp-fmt-results">
+              <div id="kdp-fmt-done" class="kdp-alert kdp-alert-success">Formatted ✓ · 2 chapters · ~43 words</div>
+              <div id="kdp-fmt-notes">
+                <div class="kdp-alert kdp-alert-info">~2 pages · 6×9 trim · gutter 0.375″ · page numbers · running heads</div>
+                <div class="kdp-alert kdp-alert-info">PDF is justified but not hyphenated (pdfmake limit) — finish from the DOCX for print-final hyphenation.</div>
+                <div class="kdp-alert kdp-alert-warn">Below the 24-page minimum for Paperback.</div>
+              </div>
+              <div class="kdp-downloads">
+                <button type="button" class="kdp-dl">Download DOCX</button>
+                <button type="button" class="kdp-dl">Download PDF</button>
+                <button type="button" class="kdp-dl">Download EPUB</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

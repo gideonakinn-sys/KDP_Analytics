@@ -381,9 +381,38 @@
   }
 
   // ------------------------------------------------------------------
+  // Tabs (Analytics | Formatter)
+  // ------------------------------------------------------------------
+  function initTabs() {
+    const bar = document.getElementById("kdp-tabs");
+    const analytics = document.getElementById("kdp-body");
+    const formatter = document.getElementById("formatter-body");
+    if (!bar || !analytics || !formatter) return;
+    const buttons = bar.querySelectorAll("button[data-tab]");
+    function switchTab(tab) {
+      const isFmt = tab === "formatter";
+      analytics.hidden = isFmt;
+      formatter.hidden = !isFmt;
+      buttons.forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+      if (refreshBtn) refreshBtn.style.visibility = isFmt ? "hidden" : "";
+      if (isFmt && window.KDPFormatter) window.KDPFormatter.activate();
+      try {
+        chrome.storage.local.set({ kdpTab: tab });
+      } catch (e) {
+        /* ignore */
+      }
+    }
+    buttons.forEach((b) => b.addEventListener("click", () => switchTab(b.dataset.tab)));
+    chrome.storage.local.get({ kdpTab: "analytics" }, (st) => {
+      switchTab(st && st.kdpTab === "formatter" ? "formatter" : "analytics");
+    });
+  }
+
+  // ------------------------------------------------------------------
   // Init
   // ------------------------------------------------------------------
   refreshBtn.addEventListener("click", refresh);
+  initTabs();
 
   chrome.storage.local.get({ kdpOverrides: { price: 0, format: "Auto", pageCount: 0 } }, (st) => {
     if (st && st.kdpOverrides) overrides = st.kdpOverrides;

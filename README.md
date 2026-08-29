@@ -45,6 +45,30 @@ Paperback/hardcover royalty = 60% of list − KDP's fixed + **per-page** print c
 ### Currencies
 Price and royalty figures display in the page's currency (`$ £ € ¥ C$ A$`). Non-USD prices are converted to USD with **fixed approximate exchange rates** for the royalty math (labeled as such in the panel's "How is this estimated?" note); they are not silent dollar mis-labels.
 
+### Formatter tab
+The panel's **Formatter** tab typesets your manuscript to each platform (all client-side, offline):
+
+- **Kindle / Apple Books** → reflowable **EPUB**: 0.2″ first-line indent, single spacing, **justified** text with CSS hyphens, a visible **Contents** page + hyperlinked NCX TOC + EPUB3 `nav`, title/copyright pages, EPUBCheck-clean structure, `ibooks`/`dcterms` metadata.
+- **KDP Paperback / Hardcover** → print **PDF** (pdfmake + embedded serif font): chosen trim (6×9 default), 0.75″ outer/top/bottom margins, **two-pass gutter** (actual page count), **running heads** (title/author alternating), page numbers, chapter breaks, **real page-numbered TOC**, min/max page warnings (PB 24–825, HC 75–550).
+- **Any target** → a real **.docx** (Word Heading styles + searchable navigation), not an HTML stub.
+- **Input**: paste text or Markdown (paste-only — no file upload). Chapters auto-detect from `Chapter N`, `Part`, `Prologue`, `Introduction`, etc. and Markdown `#`/`##` headings.
+- **AI mode**: the "Copy AI prompt" button copies a typesetter prompt + your manuscript; run it in any AI, then paste the returned semantic HTML into **AI-formatted HTML** mode. Pasting HTML-like text auto-switches the mode for you. Your inputs auto-save as a draft across restarts.
+- **In-text markup**: `*italic*`, `_italic_`, `**bold**`, `__bold__`; **scene breaks** = a line of `* * *` / `***` / `#` / `- - -`, or three blank lines (rendered as a centered dinkus with no indent on the next paragraph).
+- **Front & back matter** (Options): subtitle, copyright line (auto `© year author`), "Also By", "About the Author".
+- Print PDF is justified but not hyphenated (pdfmake limitation) — finish from the `.docx` for print-final hyphenation.
+
+### AI-assisted formatting (bring-your-own-AI)
+For the most professional structure, let an LLM prepare the manuscript:
+
+1. Paste your manuscript into the **Raw text / Markdown** input.
+2. Click **Copy AI prompt** — it copies a typesetter prompt + your manuscript.
+3. Run it in any AI (Claude/ChatGPT/Gemini) — it returns **one semantic HTML document** (`<h1 class="book-title">`, `<section class="chapter">`, `<div class="scene">`, `<blockquote>`, `<em>/<strong>`, `.dedication/.epigraph`, `.frontmatter/.backmatter` …).
+4. Switch input type to **AI-formatted HTML**, paste the result, **Format**, export.
+
+The extension parses only that controlled schema (never executes anything the AI emits) and maps it to the same EPUB/DOCX/PDF pipeline — including the new paragraph kinds (blockquote → indented quote; dedication/epigraph → centered italic).
+
+Formatting tests: `node extension/formatter.test.js`
+
 ### Parity guarantee
 The JS engine (`extension/engine.js`) is a 1:1 port of the Python engine, verified by `extension/engine.test.js` against `extension/expected.json` (generated from the app by `extension/make_expected.py`). All numeric metrics match to `1e-9`; only the rounded keyword-relevance percentage can differ by ±1% at exact `.5` ties. Rebuild fixtures with:
 
@@ -53,7 +77,7 @@ python extension/make_expected.py
 node extension/engine.test.js
 ```
 
-Note: local "Load unpacked" use only. Public Chrome Web Store distribution risks Amazon ToS action.
+Distribution note: the extension is published on the Chrome Web Store as **Bookmata** (see the release section below). It reads the Amazon page you're already viewing and computes locally — it never attempts to bypass CAPTCHAs, scrape accounts, or access paid data. Keep store description wording free of "bypass/unlock/rank boost/scrape" to stay clear of policy review friction.
 
 ## Revenue vs royalty
 
@@ -68,3 +92,19 @@ The app infers a book's ranking keywords from its title, subtitle and category b
 ## Disclaimer
 
 All sales and revenue figures are algorithmic estimates for informational/prototyping purposes. They are not sourced from Amazon's internal data and will not exactly match real payouts.
+
+## Chrome Web Store release
+
+The extension is published as **Bookmata**. Everything needed to ship is in the repo:
+
+- `PRIVACY.md` — required privacy policy (host it via this repo's GitHub Pages and paste the URL into the store).
+- `docs/publish.md` — the complete listing copy (title, summary, description, permissions justification, data-safety answers) and the Unlisted-first submission runbook.
+- `screenshots/` — offline mockups of the Analytics & Formatter views for store screenshots (see `HOW-TO.md`).
+- Build & verify the store package:
+
+```bash
+python extension/make_dist.py    # -> dist/bookmata-1.0.0.zip (runtime files only)
+node extension/check_store.js    # -> STORE CHECK OK (32 checks)
+```
+
+Distribution note: the store package is a clean whitelist (no tests/fixtures/dev scripts). Bump `manifest.json` `version` and rebuild for each release. Local "Load unpacked" still works from `extension/` for testing.

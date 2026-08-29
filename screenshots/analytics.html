@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bookmata — Analytics (screenshot mockup)</title>
+    <link rel="stylesheet" href="../extension/sidepanel.css" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #eef0f3;
+      }
+      .stage {
+        display: flex;
+        width: 1280px;
+        height: 800px;
+        background: #eef0f3;
+      }
+      .page {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+      }
+      .page .ph {
+        text-align: center;
+        color: #9ca3af;
+        font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+        font-size: 14px;
+        line-height: 2;
+      }
+      .panel {
+        width: 400px;
+        height: 800px;
+        overflow: hidden;
+        border-left: 1px solid #e5e7eb;
+        background: #fff;
+      }
+      .panel #kdp-body {
+        height: calc(100% - 108px);
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="page">
+        <div class="ph">
+          <div style="font-size: 26px; font-weight: 700; color: #374151">amazon.com/dp/B0X…</div>
+          <div>The Hero of a Thousand Pages</div>
+        </div>
+      </div>
+      <div class="panel">
+        <div id="kdp-header">
+          <span>📚 Bookmata</span>
+        </div>
+        <nav id="kdp-tabs">
+          <button type="button" class="active">Analytics</button>
+          <button type="button">Formatter</button>
+        </nav>
+        <div id="kdp-body">
+          <div class="kdp-book-title">The Hero of a Thousand Pages</div>
+          <div class="kdp-meta">by Rowan Alistair · Paperback · ASIN <code>B0EXAMPLE123</code></div>
+          <div class="kdp-alert kdp-alert-warn" style="max-width:360px">Page count not found. Print royalty needs it (KDP charges a per-page print cost) — enter a page count below.</div>
+
+          <div class="kdp-inputs">
+            <div class="kdp-field"><label for="x-price">List price ($)</label><input id="x-price" type="number" value="14.99" /></div>
+            <div class="kdp-field"><label for="x-fmt">Format</label><select id="x-fmt"><option selected>Paperback</option></select></div>
+            <div class="kdp-field"><label for="x-pages">Page count</label><input id="x-pages" type="number" value="0" placeholder="Auto" /></div>
+          </div>
+          <div class="kdp-inputs-note"><span class="kdp-muted">Enter a page count above to see royalty and revenue.</span></div>
+
+          <div class="kdp-grid">
+            <div class="kdp-card"><div class="kdp-card-label">Est. Daily Sales</div><div class="kdp-card-value">6.0 units</div></div>
+            <div class="kdp-card"><div class="kdp-card-label">Est. Monthly Sales</div><div class="kdp-card-value">180 units</div></div>
+            <div class="kdp-card"><div class="kdp-card-label">Est. Daily Royalty</div><div class="kdp-card-value">—</div></div>
+            <div class="kdp-card"><div class="kdp-card-label">Est. Monthly Royalty</div><div class="kdp-card-value">—</div></div>
+            <div class="kdp-card kdp-card-wide"><div class="kdp-card-label">Best Sellers Rank</div><div class="kdp-card-value">#12,345</div><div class="kdp-card-sub">in Books</div></div>
+          </div>
+
+          <div class="kdp-section">Book Details</div>
+          <div class="kdp-list">
+            <div class="kdp-row"><span class="kdp-row-key">List Price</span><span class="kdp-row-val">$14.99</span></div>
+            <div class="kdp-row"><span class="kdp-row-key">Price Source</span><span class="kdp-row-val">Scraped from Amazon</span></div>
+            <div class="kdp-row"><span class="kdp-row-key">Page Count</span><span class="kdp-row-val">Required (print)</span></div>
+            <div class="kdp-row"><span class="kdp-row-key">Rating</span><span class="kdp-row-val">4.6 / 5.0</span></div>
+            <div class="kdp-row"><span class="kdp-row-key">Review Count</span><span class="kdp-row-val">1,234</span></div>
+            <div class="kdp-row"><span class="kdp-row-key">BSR Category</span><span class="kdp-row-val">Books</span></div>
+            <div class="kdp-row"><span class="kdp-row-key">Est. Print Cost / Unit</span><span class="kdp-row-val">—</span></div>
+            <div class="kdp-row"><span class="kdp-row-key">Gross Monthly Revenue</span><span class="kdp-row-val">$2,698.20</span></div>
+          </div>
+
+          <div class="kdp-section">Niche Competition</div>
+          <div class="kdp-comp-label">High Competition — 74/100</div>
+          <div class="kdp-comp-bar"><div class="kdp-comp-fill" style="width:74%;background:#dc2626"></div></div>
+
+          <div class="kdp-section">Keywords &amp; Ranking</div>
+          <ul class="kdp-kw-list">
+            <li><span><b>thousand pages</b> <span class="kdp-kw-src">(Title)</span></span><span>90%</span></li>
+            <li><span><b>hero of a</b> <span class="kdp-kw-src">(Title)</span></span><span>72%</span></li>
+            <li><span><b>actionable fantasy</b> <span class="kdp-kw-src">(Subtitle)</span></span><span>68%</span></li>
+          </ul>
+          <div class="kdp-chips">
+            <span class="kdp-chip kdp-chip-high">thousand pages</span>
+            <span class="kdp-chip kdp-chip-mid">hero</span>
+            <span class="kdp-chip kdp-chip-low">fantasy</span>
+            <span class="kdp-chip kdp-chip-low">rowan</span>
+          </div>
+
+          <div class="kdp-section">Related Searches</div>
+          <p class="kdp-muted">What shoppers search — demand, not proof this book ranks for them.</p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

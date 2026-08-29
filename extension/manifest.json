@@ -1,16 +1,16 @@
 {
   "manifest_version": 3,
   "minimum_chrome_version": "114",
-  "name": "KDP Book Analytics — Side Panel",
-  "version": "0.2.0",
-  "description": "Estimate KDP sales, royalty and competition for an Amazon book in a native Chrome side panel.",
+  "name": "Bookmata",
+  "version": "1.0.0",
+  "description": "Estimate Amazon KDP sales, royalty and competition from the open book page, and typeset manuscripts to EPUB, DOCX and print PDF.",
   "permissions": ["sidePanel", "storage", "activeTab"],
   "host_permissions": ["https://completion.amazon.com/*"],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "Open KDP Analytics",
+    "default_title": "Open Bookmata",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

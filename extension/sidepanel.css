@@ -95,6 +95,35 @@ body {
   }
 }
 
+#kdp-tabs {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 9;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  padding: 0 12px;
+}
+#kdp-tabs button {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  letter-spacing: -0.01em;
+}
+#kdp-tabs button.active {
+  color: var(--fg);
+  border-bottom-color: var(--fg);
+}
+#kdp-tabs button:hover {
+  color: var(--fg);
+}
+
 #kdp-body {
   padding: 18px 16px 28px;
 }

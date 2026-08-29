@@ -5,14 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>KDP Book Analytics</title>
     <link rel="stylesheet" href="sidepanel.css" />
+    <link rel="stylesheet" href="formatter.css" />
   </head>
   <body>
     <div id="kdp-header">
       <span>📚 KDP Book Analytics</span>
       <button id="kdp-refresh" type="button" title="Refresh data">↻</button>
     </div>
+    <nav id="kdp-tabs">
+      <button type="button" data-tab="analytics" class="active">Analytics</button>
+      <button type="button" data-tab="formatter">Formatter</button>
+    </nav>
     <div id="kdp-body"></div>
+    <div id="formatter-body" hidden></div>
     <script src="engine.js"></script>
+    <script src="lib/jszip.min.js"></script>
+    <script src="lib/pdfmake.min.js"></script>
+    <script src="lib/vfs_fonts.js"></script>
+    <script src="lib/vfs_serif.js"></script>
     <script src="sidepanel.js"></script>
+    <script src="formatter.js"></script>
   </body>
 </html>
