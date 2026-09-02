@@ -107,13 +107,44 @@
     return out;
   }
 
-  var HEADING_RE = /^(chapter|part|prologue|epilogue|introduction|preface|foreword|afterword|acknowledg?ments)(\s|$)/i;
+  var HEADING_RE = /^(chapter|part|prologue|epilogue|introduction|preface|foreword|afterword|acknowledg?ments)(\s|[:.\u2013\u2014-]|$)/i;
 
   function isChapterHeading(line) {
     var s = String(line || "").trim();
     if (!s) return false;
-    if (/^#{1,3}\s+\S/.test(s)) return true;
+    if (/^#\s+\S/.test(s)) return true; // single-hash markdown chapter
     return HEADING_RE.test(s);
+  }
+
+  // Markdown subheading; `## X` / `### X` inside a chapter become an h3 subsection.
+  function subheadingDepth(line) {
+    var m = String(line || "").trim().match(/^(#{2,6})\s+(.+)$/);
+    return m ? m[1].length : 0;
+  }
+
+  // Split a chapter heading into a prominent label ("Chapter 1"/"Part II") and
+  // an optional subtitle ("The Beginning"). Bare titles become the label alone.
+  function splitChapterHeading(text) {
+    var s = String(text || "").replace(/^#{1,3}\s*/, "").trim();
+    if (!s) return { label: "", subtitle: "" };
+    function firstWord(whole) {
+      var w = whole.split(/\s+/);
+      w[0] = w[0].charAt(0).toUpperCase() + w[0].slice(1).toLowerCase();
+      return w.join(" ");
+    }
+    var sep = s.match(/^(chapter|part|prologue|epilogue|introduction|preface|foreword|afterword|acknowledg(e)?ments)(?:\s+([^\s:.\u2013\u2014-]+))?\s*[:.\u2013\u2014-]\s*(.+)$/i);
+    if (sep) {
+      var kw = sep[1];
+      var word = sep[3] ? " " + sep[3] : "";
+      return { label: firstWord(kw + word), subtitle: sep[sep.length - 1].trim() };
+    }
+    var only = s.match(/^(chapter|part|prologue|epilogue|introduction|preface|foreword|afterword|acknowledg(e)?ments)(?:\s+([^\s:.\u2013\u2014-]+))?$/i);
+    if (only) {
+      var kw2 = only[1];
+      var word2 = only[3] ? " " + only[3] : "";
+      return { label: firstWord(kw2 + word2), subtitle: "" };
+    }
+    return { label: s, subtitle: "" };
   }
 
   function defaultCopyright(ms) {
@@ -147,8 +178,13 @@
       text = smartenQuotes(text);
       if (!text) continue;
       if (u.single && isChapterHeading(text)) {
-        cur = { title: text.replace(/^#{1,3}\s*/, "").trim(), paragraphs: [] };
+        var spl = splitChapterHeading(text);
+        cur = { title: text.replace(/^#{1,3}\s*/, "").trim(), label: spl.label, subtitle: spl.subtitle, paragraphs: [], subs: [] };
         ms.chapters.push(cur);
+      } else if (u.single && subheadingDepth(text)) {
+        var sub = text.replace(/^#{1,6}\s*/, "").trim();
+        if (cur) { cur.subs.push(sub); cur.paragraphs.push({ sub: sub }); }
+        else ms.frontmatter.push({ text: sub });
       } else if (cur) {
         cur.paragraphs.push({ text: text });
       } else {
@@ -212,6 +248,7 @@
     var tokenRe = /<[^>]+>|[^<]+/g;
     var units = [];
     var curHeadingRaw = null;
+    var curHeadingLevel = 0;
     var para = null;
     var sectionMode = null;
     var mch;
@@ -224,8 +261,9 @@
     function flushHeading() {
       if (curHeadingRaw !== null) {
         var t = inlineFromHtml(curHeadingRaw);
-        if (t && sectionMode !== "frontmatter") units.push({ type: "heading", text: t });
+        if (t && sectionMode !== "frontmatter") units.push({ type: "heading", text: t, level: curHeadingLevel });
         curHeadingRaw = null;
+        curHeadingLevel = 0;
       }
     }
     function clsOf(attrs) {
@@ -244,10 +282,10 @@
       var closing = tagMatch[1] === "/";
       var tag = tagMatch[2].toLowerCase();
       var attrs = tagMatch[3];
-      if (closing) {
+if (closing) {
         if (tag === "section") { sectionMode = null; continue; }
         if (tag === "p" || tag === "blockquote") { flushPara(); continue; }
-        if (tag === "h1" || tag === "h2" || tag === "h3") { flushHeading(); continue; }
+        if (tag === "h1" || tag === "h2" || tag === "h3" || tag === "h4" || tag === "h5" || tag === "h6") { flushHeading(); continue; }
         if (para) para.raw += tok;
         else if (curHeadingRaw !== null) curHeadingRaw += tok;
         continue;
@@ -274,8 +312,9 @@
         }
         continue;
       }
-      if (tag === "h1" || tag === "h2" || tag === "h3") {
+      if (tag === "h1" || tag === "h2" || tag === "h3" || tag === "h4" || tag === "h5" || tag === "h6") {
         flushHeading();
+        curHeadingLevel = parseInt(tag.slice(1), 10) || 1;
         curHeadingRaw = "";
         continue;
       }
@@ -296,10 +335,16 @@
       }
       if (u.type === "heading") {
         var t2 = u.text;
+        if (u.level >= 3) {
+          // In-chapter subsection (h3+)
+          if (cur) { cur.subs.push(t2); cur.paragraphs.push({ sub: t2 }); }
+          continue;
+        }
         if (/^also\s+by/i.test(t2)) { mode = "also"; cur = null; continue; }
         if (/^about\s+the\s+author/i.test(t2)) { mode = "about"; cur = null; continue; }
         mode = null;
-        cur = { title: t2, paragraphs: [] };
+        var hs = splitChapterHeading(t2);
+        cur = { title: t2, label: hs.label, subtitle: hs.subtitle, paragraphs: [], subs: [] };
         ms.chapters.push(cur);
         continue;
       }
@@ -329,6 +374,16 @@
     return header + AI_PROMPT_TEMPLATE + "\n" + String(manuscript || "");
   }
 
+  // Example manuscript shown by the "Try an example" button.
+  var EXAMPLE_MANUSCRIPT =
+    "Chapter One: The Beginning\n\n" +
+    "The hero woke to the smell of rain on old stone. *Something* had changed in the night, but the world kept its secret until noon.\n\n" +
+    "\n\n" +
+    "By dusk the mountain swallowed the sun, and the company pressed on toward the river.\n\n" +
+    "Chapter Two: The Crossing\n\n" +
+    "They reached the water just after first light. It was wider than any map promised, and the ferryman asked for a name the hero no longer used.\n\n" +
+    '"So be it," he said. **The name is gone**, and so is the road behind us.';
+
   var AI_PROMPT_TEMPLATE = [
     "You are a professional book typesetter.",
     "Your ONLY job: turn the manuscript below into ONE complete, valid HTML document, preserving every word of the content (fix only clear OCR/typo errors, straighten quotes, fix punctuation).",
@@ -348,6 +403,8 @@
     '    <p class="dedication">…</p>',
     '    <p class="epigraph">…</p>',
     "    <blockquote>Quoted passage.</blockquote>",
+    '    <h3>Subsection</h3>',
+    "    <p>…</p>",
     "  </section>",
     '  <section class="backmatter"><h1>About the Author</h1><p>…</p></section>',
     "</body></html>",
@@ -357,6 +414,7 @@
     '- Scene breaks inside a chapter = <div class="scene"></div>.',
     "- Emphasize with <em>/<strong> only where the source marks it (*italic*, **bold**, etc.).",
     "- Wrap remembered/quoted passages in <blockquote>.",
+    "- Minor section headings inside a chapter = <h3>. The chapter's <h1> stays its own title (with <h2> only for a 'Chapter N: Subtitle' pattern).",
     "",
     "MANUSCRIPT:",
     "-----------------------------------",
@@ -404,6 +462,11 @@
     (paragraphs || []).forEach(function (p) {
       if (p && p.scene) {
         out.push({ scene: true });
+        first = true;
+        return;
+      }
+      if (p && p.sub) {
+        out.push({ sub: p.sub });
         first = true;
         return;
       }
@@ -507,9 +570,14 @@
   }
 
   function parasHtml(items) {
+    var subN = 0;
     return items
       .map(function (item) {
         if (item.scene) return '<p class="scene">*&nbsp;*&nbsp;*</p>';
+        if (item.sub) {
+          subN += 1;
+          return '<h3 id="s' + subN + '">' + renderHtmlInline(item.sub) + "</h3>";
+        }
         var inner = renderHtmlInline(item.text);
         if (item.kind === "quote") return '<blockquote><p class="noindent">' + inner + "</p></blockquote>";
         if (item.kind === "dedication" || item.kind === "epigraph") {
@@ -522,7 +590,9 @@
 
   function chapterXhtml(chapter) {
     var items = bodyParagraphs(chapter.paragraphs);
-    var heading = chapter.title ? "<h1>" + esc(chapter.title) + "</h1>\n" : "";
+    var heading = "";
+    if (chapter.label) heading += "<h1" + (chapter.subtitle ? ' class="with-sub"' : "") + ">" + esc(chapter.label) + "</h1>\n";
+    if (chapter.subtitle) heading += "<h2>" + esc(chapter.subtitle) + "</h2>\n";
     return xhtmlShell(chapter.title || "Chapter", "chapter", heading + parasHtml(items));
   }
 
@@ -533,16 +603,46 @@
     return xhtmlShell(ms.title || "Title", "titlepage", inner);
   }
 
-  function copyrightXhtml(ms) {
+  function metaLine(ms, opts) {
+    opts = opts || {};
+    var parts = [];
+    if (opts.isbn) parts.push("ISBN " + opts.isbn);
+    if (opts.publisher) parts.push("Published by " + opts.publisher);
+    if (opts.edition) parts.push(opts.edition);
+    return parts.join(" · ");
+  }
+
+  function copyrightXhtml(ms, opts) {
     var inner = "<h1>Copyright</h1>\n<p class=\"noindent\">" + esc(ms.copyright || defaultCopyright(ms)) + "</p>\n<p class=\"noindent\">All rights reserved.</p>";
+    var meta = metaLine(ms, opts);
+    if (meta) inner += '\n<p class="noindent">' + esc(meta) + "</p>";
     return xhtmlShell(ms.title || "Copyright", "copyright", inner);
+  }
+
+  function chapterSubs(chapter) {
+    var out = [];
+    var n = 0;
+    (chapter.paragraphs || []).forEach(function (p) {
+      if (p && p.sub) {
+        n += 1;
+        out.push({ text: p.sub, id: "s" + n });
+      }
+    });
+    return out;
   }
 
   function contentsXhtml(ms, chapters) {
     var lis = chapters
       .filter(function (c) { return c.title; })
       .map(function (c) {
-        return '<li><a href="' + chapterFileName(chapters.indexOf(c)) + '">' + esc(c.title) + "</a></li>";
+        var idx = chapters.indexOf(c);
+        var subs = chapterSubs(c).map(function (s) {
+          return '<li><a href="' + chapterFileName(idx) + '#' + s.id + '">' + esc(s.text) + "</a></li>";
+        });
+        var nested = subs.length
+          ? "\n        <ol>\n        " + subs.join("\n        ") + "\n        </ol>"
+          : "";
+        return "<li><a href=\"" + chapterFileName(idx) + "\">" + esc(c.title) + "</a>" + nested + "</li>";
       })
       .join("\n      ");
     var inner = "<h1>Contents</h1>\n      <ol>\n      " + lis + "\n      </ol>";
@@ -566,28 +666,36 @@
     return inner ? xhtmlShell(ms.title || "Back Matter", "backmatter", inner) : null;
   }
 
-  function epubStyle() {
+  function epubStyle(justify) {
+    var align = justify !== false ? "text-align: justify;" : "text-align: left;";
     return (
-      "body { font-family: serif, Georgia, \"Times New Roman\", serif; line-height: 1.2; text-align: justify; hyphens: auto; -webkit-hyphens: auto; }\n" +
+      "body { font-family: serif, Georgia, \"Times New Roman\", serif; margin: 0; padding: 0 0.5em; line-height: 1.4; " + align + " hyphens: auto; -webkit-hyphens: auto; }\n" +
+      ".cover img { width: 100%; max-width: 100%; height: auto; }\n" +
       ".titlepage { text-align: center; margin-top: 34%; }\n" +
       ".titlepage h1 { font-size: 1.6em; margin: 0 0 .6em; page-break-before: avoid; }\n" +
-      ".titlepage .subtitle { font-size: 1.05em; font-style: italic; margin: 0 0 1.2em; }\n" +
-      ".titlepage p { text-align: center; font-size: 1em; margin: .4em 0; }\n" +
-      ".copyright, .backmatter { text-align: center; padding-top: 2em; } .copyright p, .backmatter p { text-align: center; } .copyright .noindent, .backmatter .noindent { text-align: center; }\n" +
+      ".titlepage .subtitle { font-size: 1.05em; font-style: italic; margin: 0 0 1.2em; text-indent: 0; }\n" +
+      ".titlepage p { text-align: center; text-indent: 0; font-size: 1em; margin: .4em 0; }\n" +
+      ".copyright, .backmatter { text-align: center; padding-top: 2em; } .copyright p, .backmatter p { text-align: center; text-indent: 0; } .copyright .noindent, .backmatter .noindent { text-align: center; text-indent: 0; }\n" +
       ".contents h1 { page-break-before: avoid; }\n" +
       ".contents ol { list-style: none; margin: 1.2em 0 0 0; padding: 0; }\n" +
-      ".contents li { margin: .5em 0; } .contents a { text-decoration: none; color: #111;\n" +
-      "h1 { font-size: 1.3em; text-align: center; margin: 0 0 1.1em; page-break-before: always; }\n" +
-      "p { text-indent: 0.2in; margin: 0 0 0.6em 0; orphans: 2; widows: 2; }\n" +
+      ".contents li { margin: .5em 0; } .contents ol ol { margin-left: 1.2em; } .contents a { text-decoration: none; color: inherit; }\n" +
+      "h1, h2, h3 { break-after: avoid; page-break-after: avoid; }\n" +
+      "h1 { font-size: 1.3em; text-align: center; line-height: 1.2; margin: 0 0 1.1em; break-before: page; page-break-before: always; }\n" +
+      "h1.with-sub { margin-bottom: .4em; }\n" +
+      "h2 { font-size: 1.05em; text-align: center; line-height: 1.25; margin: 0 0 1.2em; }\n" +
+      "h3 { font-size: 1em; font-weight: bold; text-align: left; margin: 1.2em 0 .4em; break-inside: avoid; }\n" +
+      "p { text-indent: 1.2em; margin: 0; orphans: 2; widows: 2; }\n" +
       "p.noindent { text-indent: 0; }\n" +
       "p.scene { text-indent: 0; text-align: center; margin: .9em 0; letter-spacing: .3em; }\n" +
       "blockquote { margin: .8em 1.5em; } blockquote p { text-indent: 0; font-style: italic; }\n" +
       "p.dedication, p.epigraph { text-indent: 0; text-align: center; font-style: italic; }\n" +
+      "img { max-width: 100%; height: auto; } figure { margin: 1em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }\n" +
       "em { font-style: italic; } strong { font-weight: bold; }\n"
     );
   }
 
   function contentOpf(ms, chapters, extra, uuid) {
+    extra = extra || {};
     var manifest = [];
     var spine = [];
     var manifestOnly = function (id, href, type, props) {
@@ -601,6 +709,11 @@
     manifestOnly("nav", "nav.xhtml", "application/xhtml+xml", "nav");
     manifestOnly("ncx", "toc.ncx", "application/x-dtbncx+xml");
     manifestOnly("css", "style.css", "text/css");
+    if (extra.hasCover) {
+      var mime = extra.coverExt === "png" ? "image/png" : extra.coverExt === "gif" ? "image/gif" : "image/jpeg";
+      manifestOnly("cover-img", "images/cover." + extra.coverExt, mime, "cover-image");
+      reading("cover", "cover.xhtml");
+    }
     reading("titlepage", "titlepage.xhtml");
     reading("copyright", "copyrightpage.xhtml");
     reading("contents", "contents.xhtml");
@@ -609,14 +722,21 @@
     if (extra.hasBack) reading("backmatter", "backmatter.xhtml");
     var mod = new Date().toISOString().replace(/\.\d+Z$/, "Z");
     var creator = ms.author ? "<dc:creator>" + esc(ms.author) + "</dc:creator>\n  " : "";
+    var ident = extra.isbn ? "urn:isbn:" + esc(extra.isbn) : "urn:uuid:" + uuid;
+    var pub = extra.publisher ? "    <dc:publisher>" + esc(extra.publisher) + "</dc:publisher>\n" : "";
+    var date = extra.edition ? "    <dc:date>" + esc(extra.edition) + "</dc:date>\n" : "";
+    var coverMeta = extra.hasCover ? '    <meta name="cover" content="cover-img"/>\n' : "";
     return (
       '<?xml version="1.0" encoding="utf-8"?>\n' +
       '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid">\n' +
       "  <metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n" +
-      '    <dc:identifier id="bookid">urn:uuid:' + uuid + "</dc:identifier>\n" +
+      "    <dc:identifier id=\"bookid\">" + ident + "</dc:identifier>\n" +
       "    <dc:title>" + esc(ms.title || "Untitled") + "</dc:title>\n" +
       "    " + creator +
+      pub +
+      date +
       "    <dc:language>en</dc:language>\n" +
+      coverMeta +
       '    <meta property="dcterms:modified">' + mod + "</meta>\n" +
       '    <meta property="ibooks:version">1.0</meta>\n' +
       "  </metadata>\n" +
@@ -630,7 +750,14 @@
     var lis = chapters
       .filter(function (c) { return c.title; })
       .map(function (c) {
-        return '<li><a href="' + chapterFileName(chapters.indexOf(c)) + '">' + esc(c.title) + "</a></li>";
+        var idx = chapters.indexOf(c);
+        var subs = chapterSubs(c).map(function (s) {
+          return '<li><a href="' + chapterFileName(idx) + '#' + s.id + '">' + esc(s.text) + "</a></li>";
+        });
+        var nested = subs.length
+          ? "\n      <ol>\n      " + subs.join("\n      ") + "\n      </ol>\n    "
+          : "";
+        return "<li><a href=\"" + chapterFileName(idx) + "\">" + esc(c.title) + "</a>" + nested + "</li>";
       })
       .join("\n      ");
     var inner = '<nav epub:type="toc" id="toc">\n      <h1>Contents</h1>\n      <ol>\n      ' + lis + "\n      </ol>\n    </nav>";
@@ -638,14 +765,27 @@
   }
 
   function tocNcx(ms, chapters, uuid) {
+    var order = 0;
     var points = chapters
       .filter(function (c) { return c.title; })
       .map(function (c, i) {
         var idx = chapters.indexOf(c);
+        order += 1;
+        var po = order;
+        var nested = chapterSubs(c).map(function (s) {
+          order += 1;
+          return (
+            '<navPoint id="navpoint-sub-' + (i + 1) + "-" + s.id + '" playOrder="' + order + '">' +
+            "<navLabel><text>" + esc(s.text) + "</text></navLabel>" +
+            '<content src="' + chapterFileName(idx) + '#' + s.id + '"/>' +
+            "</navPoint>"
+          );
+        }).join("");
         return (
-          '<navPoint id="navpoint-' + (i + 1) + '" playOrder="' + (i + 1) + '">' +
+          '<navPoint id="navpoint-' + (i + 1) + '" playOrder="' + po + '">' +
           "<navLabel><text>" + esc(c.title) + "</text></navLabel>" +
           '<content src="' + chapterFileName(idx) + '"/>' +
+          nested +
           "</navPoint>"
         );
       })
@@ -665,11 +805,20 @@
     );
   }
 
-  function epubFiles(ms) {
+  function coverExtOf(cover) {
+    var mime = (cover && cover.mime) || "";
+    if (/png/i.test(mime)) return "png";
+    if (/gif/i.test(mime)) return "gif";
+    return "jpg";
+  }
+
+  function epubFiles(ms, opts) {
+    opts = opts || {};
     var uuid = genUuid();
     var hasFront = ms.frontmatter && ms.frontmatter.length > 0;
     var back = backmatterXhtml(ms);
     var hasBack = !!back;
+    var hasCover = !!(opts.cover && opts.cover.dataUrl);
     var files = {};
     files["mimetype"] = "application/epub+zip";
     files["META-INF/container.xml"] =
@@ -679,12 +828,31 @@
       '    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>\n' +
       "  </rootfiles>\n" +
       "</container>";
-    files["OEBPS/content.opf"] = contentOpf(ms, ms.chapters, { hasFront: hasFront, hasBack: hasBack }, uuid);
+    files["OEBPS/content.opf"] = contentOpf(
+      ms,
+      ms.chapters,
+      {
+        hasFront: hasFront,
+        hasBack: hasBack,
+        hasCover: hasCover,
+        coverExt: hasCover ? coverExtOf(opts.cover) : null,
+        isbn: opts.isbn || "",
+        publisher: opts.publisher || "",
+        edition: opts.edition || "",
+      },
+      uuid
+    );
+    if (hasCover) {
+      var b64 = String(opts.cover.dataUrl).split(",")[1] || "";
+      files["OEBPS/images/cover." + coverExtOf(opts.cover)] = { b64: true, data: b64 };
+      files["OEBPS/cover.xhtml"] =
+        xhtmlShell(ms.title || "Cover", "cover", '<img src="images/cover.' + coverExtOf(opts.cover) + '" alt="Cover"/>');
+    }
     files["OEBPS/nav.xhtml"] = navXhtml(ms, ms.chapters);
     files["OEBPS/toc.ncx"] = tocNcx(ms, ms.chapters, uuid);
-    files["OEBPS/style.css"] = epubStyle();
+    files["OEBPS/style.css"] = epubStyle(opts.justify);
     files["OEBPS/titlepage.xhtml"] = titlepageXhtml(ms);
-    files["OEBPS/copyrightpage.xhtml"] = copyrightXhtml(ms);
+    files["OEBPS/copyrightpage.xhtml"] = copyrightXhtml(ms, opts);
     files["OEBPS/contents.xhtml"] = contentsXhtml(ms, ms.chapters);
     if (hasFront) files["OEBPS/frontmatter.xhtml"] = frontmatterXhtml(ms);
     for (var i = 0; i < ms.chapters.length; i++) {
@@ -694,8 +862,8 @@
     return files;
   }
 
-  function buildEpub(ms) {
-    var files = epubFiles(ms);
+  function buildEpub(ms, opts) {
+    var files = epubFiles(ms, opts);
     var JSZipLib = root.JSZip;
     if (!JSZipLib) throw new Error("JSZip not loaded");
     var zip = new JSZipLib();
@@ -703,7 +871,8 @@
     zip.file("META-INF/container.xml", files["META-INF/container.xml"]);
     Object.keys(files).forEach(function (path) {
       if (path === "mimetype" || path === "META-INF/container.xml") return;
-      zip.file(path, files[path]);
+      var v = files[path];
+      zip.file(path, v && v.b64 ? v.data : v, v && v.b64 ? { base64: true } : undefined);
     });
     return zip.generateAsync({ type: "blob", mimeType: "application/epub+zip" });
   }
@@ -730,7 +899,17 @@
     return wPara('<w:pPr><w:pStyle w:val="BodyText"/>' + (extraPPr || "") + "</w:pPr>", wRuns(text || ""));
   }
 
-  function docxFiles(ms) {
+  function docxFiles(ms, opts) {
+    opts = opts || {};
+    var isPrint = opts.target && (TARGETS[opts.target] || {}).kind === "print";
+    var trimInfo = isPrint && opts.trim ? PRINT_TRIMS[opts.trim] || null : null;
+    var gutterTwips = 0;
+    if (trimInfo) {
+      var est = estimatePages(fullText(ms), opts.lineSpacing || (TARGETS[opts.target] || {}).lineSpacing || 1.15, opts.trim);
+      gutterTwips = Math.round(gutterFor(est, opts.target) * 1440);
+    }
+    var pgW = trimInfo ? Math.round(trimInfo.w * 1440) : 12240;
+    var pgH = trimInfo ? Math.round(trimInfo.h * 1440) : 15840;
     var body = [];
     function para(style, runs) {
       return wPara('<w:pPr><w:pStyle w:val="' + style + '"/></w:pPr>', runs);
@@ -743,6 +922,8 @@
     body.push(para("ContentsTitle", wRunTxt("Copyright")));
     body.push(wPara('<w:pPr><w:pStyle w:val="BodyText"/><w:ind w:firstLine="0"/><w:jc w:val="center"/></w:pPr>', wRunTxt(ms.copyright || defaultCopyright(ms))));
     body.push(wPara('<w:pPr><w:pStyle w:val="BodyText"/><w:ind w:firstLine="0"/><w:jc w:val="center"/></w:pPr>', wRunTxt("All rights reserved.")));
+    var cpMeta = metaLine(ms, opts);
+    if (cpMeta) body.push(wPara('<w:pPr><w:pStyle w:val="BodyText"/><w:ind w:firstLine="0"/><w:jc w:val="center"/></w:pPr>', wRunTxt(cpMeta)));
 
     // Contents
     body.push(para("ContentsTitle", wRunTxt("Contents")));
@@ -753,8 +934,13 @@
 
     // Chapters
     ms.chapters.forEach(function (ch) {
-      if (ch.title) body.push(para("Heading1", wRunTxt(ch.title)));
-      bodyParagraphs(ch.paragraphs).forEach(function (item) {
+      if (ch.label) body.push(para("Heading1", wRunTxt(ch.label)));
+      if (ch.subtitle) body.push(para("Heading2", wRunTxt(ch.subtitle)));
+bodyParagraphs(ch.paragraphs).forEach(function (item) {
+        if (item.sub) {
+          body.push(para("Heading3", wRunTxt(item.sub)));
+          return;
+        }
         if (item.scene) {
           body.push(wPara('<w:pPr><w:pStyle w:val="BodyText"/><w:ind w:firstLine="0"/><w:jc w:val="center"/></w:pPr>', wRunTxt("* * *")));
           return;
@@ -781,7 +967,7 @@
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n' +
       '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">\n' +
       "<w:body>\n" + body.join("\n") + "\n" +
-      '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:left="1080" w:right="1080" w:top="1080" w:bottom="1080"/></w:sectPr>' +
+      '<w:sectPr><w:pgSz w:w="' + pgW + '" w:h="' + pgH + '"/><w:pgMar w:left="1080" w:right="1080" w:top="1080" w:bottom="1080" w:gutter="' + gutterTwips + '"/></w:sectPr>' +
       "</w:body>\n</w:document>";
 
     var stylesXml =
@@ -792,7 +978,9 @@
       '<w:style w:type="paragraph" w:styleId="Subtitle"><w:name w:val="subtitle"/><w:basedOn w:val="Normal"/><w:pPr><w:jc w:val="center"/><w:spacing w:after="240"/></w:pPr><w:rPr><w:i/></w:rPr></w:style>\n' +
       '<w:style w:type="paragraph" w:styleId="Author"><w:name w:val="author"/><w:basedOn w:val="Normal"/><w:pPr><w:jc w:val="center"/><w:spacing w:after="480"/></w:pPr><w:rPr><w:sz w:val="24"/></w:rPr></w:style>\n' +
       '<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/><w:pageBreakBefore/><w:jc w:val="center"/><w:spacing w:before="360" w:after="240"/></w:pPr><w:rPr><w:b/><w:sz w:val="30"/></w:rPr></w:style>\n' +
-      '<w:style w:type="paragraph" w:styleId="BodyText"><w:name w:val="body text"/><w:basedOn w:val="Normal"/><w:pPr><w:ind w:firstLine="360"/><w:jc w:val="both"/><w:spacing w:after="120" w:line="276" w:lineRule="auto" w:widowControl="1"/></w:pPr></w:style>\n' +
+      '<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/><w:jc w:val="center"/><w:spacing w:after="240"/></w:pPr><w:rPr><w:sz w:val="26"/></w:rPr></w:style>\n' +
+      '<w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/><w:spacing w:before="240" w:after="120"/></w:pPr><w:rPr><w:b/><w:sz w:val="24"/></w:rPr></w:style>\n' +
+      '<w:style w:type="paragraph" w:styleId="BodyText"><w:name w:val="body text"/><w:basedOn w:val="Normal"/><w:pPr><w:ind w:firstLine="360"/><w:jc w:val="both"/><w:spacing w:line="276" w:lineRule="auto" w:widowControl="1"/></w:pPr></w:style>\n' +
       '<w:style w:type="paragraph" w:styleId="ContentsTitle"><w:name w:val="contents title"/><w:basedOn w:val="Normal"/><w:pPr><w:keepNext/><w:pageBreakBefore/><w:jc w:val="center"/><w:spacing w:after="240"/></w:pPr><w:rPr><w:b/><w:sz w:val="30"/></w:rPr></w:style>\n' +
       '<w:style w:type="paragraph" w:styleId="ContentsText"><w:name w:val="contents text"/><w:basedOn w:val="Normal"/><w:pPr><w:spacing w:after="120"/></w:pPr></w:style>\n' +
       "</w:styles>";
@@ -820,11 +1008,11 @@
     };
   }
 
-  function buildDocx(ms) {
+  function buildDocx(ms, opts) {
     var JSZipLib = root.JSZip;
     if (!JSZipLib) throw new Error("JSZip not loaded");
     var zip = new JSZipLib();
-    var files = docxFiles(ms);
+    var files = docxFiles(ms, opts);
     Object.keys(files).forEach(function (p) { zip.file(p, files[p]); });
     return zip.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
   }
@@ -843,6 +1031,12 @@
 
     var content = [];
 
+    // Cover page (optional)
+    if (opts.cover && opts.cover.dataUrl) {
+      content.push({ image: opts.cover.dataUrl, fit: [Math.round(trim.w * 72), Math.round(trim.h * 72)], alignment: "center" });
+      content.push({ text: "", pageBreak: "after" });
+    }
+
     // Title page
     content.push({ text: ms.title || "Untitled", style: "titleTitle" });
     if (ms.subtitle) content.push({ text: ms.subtitle, style: "titleSubtitle" });
@@ -853,6 +1047,8 @@
     content.push({ text: "Copyright", style: "sectTitle" });
     content.push({ text: ms.copyright || defaultCopyright(ms), style: "bodyNoIndent", alignment: "center" });
     content.push({ text: "All rights reserved.", style: "bodyNoIndent", alignment: "center" });
+    var meta = metaLine(ms, opts);
+    if (meta) content.push({ text: meta, style: "bodyNoIndent", alignment: "center" });
     content.push({ text: "", pageBreak: "after" });
 
     // Front matter (dedication / epigraph)
@@ -875,8 +1071,10 @@
 
     // Chapters
     ms.chapters.forEach(function (ch) {
-      if (ch.title) content.push({ text: ch.title, style: "chapterTitle", tocItem: true, pageBreak: "before" });
+      if (ch.label) content.push({ text: ch.label, style: "chapterTitle", tocItem: { text: ch.title || ch.label }, pageBreak: "before" });
+      if (ch.subtitle) content.push({ text: ch.subtitle, style: "chapterSubtitle" });
       bodyParagraphs(ch.paragraphs).forEach(function (item) {
+        if (item.sub) { content.push({ text: renderPdfInline(item.sub), style: "chapterSubheader" }); return; }
         if (item.scene) { content.push({ text: "* * *", style: "dinkus" }); return; }
         if (item.kind === "quote") { content.push({ text: renderPdfInline(item.text), style: "blockquote" }); return; }
         if (item.kind === "dedication" || item.kind === "epigraph") { content.push({ text: renderPdfInline(item.text), style: "dedication" }); return; }
@@ -913,7 +1111,9 @@
         titleAuthor: { fontSize: 14, alignment: "center", margin: [0, 0, 0, 20] },
         sectTitle: { fontSize: 15, bold: true, alignment: "center", margin: [0, 0, 0, 16] },
         tocTitle: { fontSize: 15, bold: true, alignment: "center", margin: [0, 0, 0, 16] },
-        chapterTitle: { fontSize: 16, bold: true, alignment: "center", margin: [0, 0, 0, 14] },
+        chapterTitle: { fontSize: 16, bold: true, alignment: "center", margin: [0, 0, 0, 4] },
+        chapterSubtitle: { fontSize: 13, alignment: "center", margin: [0, 0, 0, 14] },
+        chapterSubheader: { fontSize: 12, bold: true, alignment: "left", margin: [0, 10, 0, 4] },
         backTitle: { fontSize: 16, bold: true, alignment: "center", margin: [0, 0, 0, 14] },
         body: { textIndent: Math.round(0.25 * 72), margin: [0, 0, 0, 8] },
         bodyNoIndent: { margin: [0, 0, 0, 8] },
@@ -987,15 +1187,44 @@
         })
         .join("") +
       "</div>" +
+      '<div class="kdp-section">Book</div>' +
+      '<div class="kdp-opts">' +
+      '<div class="kdp-field"><label for="kdp-fmt-title">Title</label><input id="kdp-fmt-title" type="text" placeholder="Book title" /></div>' +
+      '<div class="kdp-field"><label for="kdp-fmt-author">Author</label><input id="kdp-fmt-author" type="text" placeholder="Author name" /></div>' +
+      '<div class="kdp-field"><label for="kdp-fmt-subtitle">Subtitle</label><input id="kdp-fmt-subtitle" type="text" /></div>' +
+      '<div class="kdp-field" style="grid-column:1 / -1">' +
+      '<input type="file" id="kdp-fmt-cover" accept="image/*" hidden />' +
+      '<label class="kdp-muted" for="kdp-fmt-cover-btn">Cover image (EPUB/PDF)</label>' +
+      '<button type="button" class="kdp-btn" id="kdp-fmt-cover-btn">Add cover</button>' +
+      '<div id="kdp-fmt-cover-preview"></div>' +
+      "</div>" +
+      "</div>" +
+      "<details class=\"kdp-about\"><summary>Front &amp; back matter</summary>" +
+      '<div class="kdp-opts" style="margin-top:8px">' +
+      '<div class="kdp-field"><label for="kdp-fmt-copyright">Copyright line</label><input id="kdp-fmt-copyright" type="text" placeholder="Auto: © <year> <author>" /></div>' +
+      '<div class="kdp-field"><label for="kdp-fmt-isbn">ISBN</label><input id="kdp-fmt-isbn" type="text" placeholder="Optional, e.g. 9781234567890" /></div>' +
+      '<div class="kdp-field"><label for="kdp-fmt-publisher">Publisher</label><input id="kdp-fmt-publisher" type="text" /></div>' +
+      '<div class="kdp-field"><label for="kdp-fmt-edition">Edition / Year</label><input id="kdp-fmt-edition" type="text" placeholder="e.g. First Edition, 2026" /></div>' +
+      '<div class="kdp-field" style="grid-column:1 / -1"><label for="kdp-fmt-also">Also By</label><textarea id="kdp-fmt-also" rows="2" placeholder="Optional. E.g., The First Book, The Second Book"></textarea></div>' +
+      '<div class="kdp-field" style="grid-column:1 / -1"><label for="kdp-fmt-about">About the Author</label><textarea id="kdp-fmt-about" rows="3" placeholder="Optional bio"></textarea></div>' +
+      "</div></details>" +
       '<div class="kdp-section">Content</div>' +
-      '<div class="kdp-mode-row">' +
-      '<label class="kdp-muted" for="kdp-fmt-mode">Input type</label>' +
-      '<select id="kdp-fmt-mode">' +
-      '<option value="raw">Raw text / Markdown</option>' +
-      '<option value="ai">AI-formatted HTML</option>' +
-      "</select>" +
+      '<div class="kdp-path">' +
+      '<button type="button" class="kdp-path-btn active" data-path="raw">✍️ Paste my manuscript</button>' +
+      '<button type="button" class="kdp-path-btn" data-path="ai">🤖 Let AI structure it</button>' +
+      "</div>" +
+      '<select id="kdp-fmt-mode" hidden><option value="raw">raw</option><option value="ai">ai</option></select>' +
+      '<div id="kdp-fmt-wizard" hidden>' +
+      '<div class="kdp-wizard-step"><b>1</b> Paste your manuscript below</div>' +
+      '<div class="kdp-wizard-step"><b>2</b> Copy the AI prompt, run it in your AI</div>' +
+      '<div class="kdp-wizard-step"><b>3</b> Paste the returned HTML below — auto-detected</div>' +
       "</div>" +
       '<textarea id="kdp-fmt-text" rows="10" placeholder="Paste your manuscript here. Chapters: \"Chapter 1\", \"Part I\", \"Prologue\", \"Introduction\" or Markdown # Heading. Result sections: three blank lines (or a line of * * *) between scenes; *italic* and **bold**."></textarea>' +
+      '<div class="kdp-tip" id="kdp-fmt-tip">' +
+      '<span>New here? Paste your manuscript, pick a format, and hit <b>Format</b> — or let AI structure a messy draft first.</span>' +
+      '<button type="button" id="kdp-fmt-tip-dismiss" title="Dismiss">✕</button>' +
+      "</div>" +
+      '<button type="button" class="kdp-btn" id="kdp-fmt-example">✨ Try an example</button>' +
       '<div class="kdp-wc-row"><span class="kdp-muted" id="kdp-fmt-wc" aria-live="polite"></span></div>' +
       '<div class="kdp-fmt-row">' +
       '<button type="button" class="kdp-btn" id="kdp-fmt-prompt">Copy AI prompt</button>' +
@@ -1003,22 +1232,23 @@
       "</div>" +
       '<div class="kdp-section">Options</div>' +
       '<div class="kdp-opts">' +
-      '<div class="kdp-field"><label for="kdp-fmt-title">Title</label><input id="kdp-fmt-title" type="text" placeholder="Book title" /></div>' +
-      '<div class="kdp-field"><label for="kdp-fmt-author">Author</label><input id="kdp-fmt-author" type="text" placeholder="Author name" /></div>' +
       '<div class="kdp-field kdp-print-only"><label for="kdp-fmt-trim">Trim size</label><select id="kdp-fmt-trim"></select></div>' +
       '<div class="kdp-field kdp-print-only"><label for="kdp-fmt-spacing">Line spacing</label><select id="kdp-fmt-spacing"><option value="1">Single (1.0)</option><option value="1.15">1.15</option><option value="1.5">1.5</option></select></div>' +
+      '<div class="kdp-field kdp-ebook-only"><label class="kdp-check"><input id="kdp-fmt-justify" type="checkbox" checked /> Justify body text</label></div>' +
       "</div>" +
-      "<details class=\"kdp-about\"><summary>Front &amp; back matter</summary>" +
-      '<div class="kdp-opts" style="margin-top:8px">' +
-      '<div class="kdp-field"><label for="kdp-fmt-subtitle">Subtitle</label><input id="kdp-fmt-subtitle" type="text" /></div>' +
-      '<div class="kdp-field"><label for="kdp-fmt-copyright">Copyright line</label><input id="kdp-fmt-copyright" type="text" placeholder="Auto: © <year> <author>" /></div>' +
-      '<div class="kdp-field" style="grid-column:1 / -1"><label for="kdp-fmt-also">Also By</label><textarea id="kdp-fmt-also" rows="2" placeholder="Optional. E.g., The First Book, The Second Book"></textarea></div>' +
-      '<div class="kdp-field" style="grid-column:1 / -1"><label for="kdp-fmt-about">About the Author</label><textarea id="kdp-fmt-about" rows="3" placeholder="Optional bio"></textarea></div>' +
-      "</div></details>" +
       '<button type="button" class="kdp-btn kdp-btn-primary" id="kdp-fmt-run">Format</button>' +
       '<div id="kdp-fmt-results" hidden>' +
+      '<div id="kdp-fmt-summary" class="kdp-summary-row">' +
+      '<div class="kdp-summary-text">' +
       '<div id="kdp-fmt-done" class="kdp-alert kdp-alert-success" aria-live="polite"></div>' +
       '<div id="kdp-fmt-notes" aria-live="polite"></div>' +
+      '<details id="kdp-fmt-structure" class="kdp-structure" open>' +
+      "<summary>Structure</summary>" +
+      '<div id="kdp-fmt-structure-body"></div>' +
+      "</details>" +
+      "</div>" +
+      '<button type="button" id="kdp-fmt-summary-dismiss" title="Dismiss summary" aria-label="Dismiss">✕</button>' +
+      "</div>" +
       '<div class="kdp-downloads">' +
       '<button type="button" class="kdp-dl" data-ext="docx" disabled>Download DOCX</button>' +
       '<button type="button" class="kdp-dl" data-ext="pdf" disabled>Download PDF</button>' +
@@ -1030,7 +1260,7 @@
 
     var textEl = container.querySelector("#kdp-fmt-text");
     var files = {};
-    ["title", "author", "trim", "spacing", "subtitle", "copyright", "also", "about"].forEach(function (n) {
+    ["title", "author", "trim", "spacing", "subtitle", "copyright", "isbn", "publisher", "edition", "also", "about"].forEach(function (n) {
       files[n] = container.querySelector("#kdp-fmt-" + n);
     });
     var modeEl = container.querySelector("#kdp-fmt-mode");
@@ -1042,8 +1272,22 @@
     var resultsEl = container.querySelector("#kdp-fmt-results");
     var doneEl = container.querySelector("#kdp-fmt-done");
     var notesEl = container.querySelector("#kdp-fmt-notes");
+    var summaryEl = container.querySelector("#kdp-fmt-summary");
+    var summaryDismiss = container.querySelector("#kdp-fmt-summary-dismiss");
+    var structureEl = container.querySelector("#kdp-fmt-structure-body");
     var dlButtons = Array.prototype.slice.call(container.querySelectorAll(".kdp-dl"));
     var pillButtons = Array.prototype.slice.call(container.querySelectorAll(".kdp-pill"));
+    var pathButtons = Array.prototype.slice.call(container.querySelectorAll(".kdp-path-btn"));
+    var wizardEl = container.querySelector("#kdp-fmt-wizard");
+    var tipEl = container.querySelector("#kdp-fmt-tip");
+    var tipDismiss = container.querySelector("#kdp-fmt-tip-dismiss");
+    var exampleBtn = container.querySelector("#kdp-fmt-example");
+    var justifyEl = container.querySelector("#kdp-fmt-justify");
+    var coverInput = container.querySelector("#kdp-fmt-cover");
+    var coverBtn = container.querySelector("#kdp-fmt-cover-btn");
+    var coverPreview = container.querySelector("#kdp-fmt-cover-preview");
+    var tipDismissed = false;
+    var uiCover = null;
 
     function setPills(targetKey) {
       pillButtons.forEach(function (b) {
@@ -1068,21 +1312,37 @@
     function applyModeHint() {
       var ai = modeEl.value === "ai";
       textEl.placeholder = ai
-        ? 'Paste the HTML your AI returned. To generate it, switch back to Raw text / Markdown and use "Copy AI prompt".'
+        ? 'Paste the HTML your AI returned. To generate it, switch back to "✍️ Paste my manuscript" and use the AI prompt.'
         : 'Paste your manuscript here. Chapters: "Chapter 1", "Part I", "Prologue", "Introduction" or Markdown # Heading. Result sections: three blank lines (or a line of * * *) between scenes; *italic* and **bold**.';
+      syncPathUI();
       updatePrintVisibility();
       updatePromptVisibility();
+      updateTip();
+    }
+
+    function syncPathUI() {
+      pathButtons.forEach(function (b) { b.classList.toggle("active", b.dataset.path === modeEl.value); });
+      if (wizardEl) wizardEl.hidden = modeEl.value !== "ai";
+      if (exampleBtn) exampleBtn.style.display = modeEl.value === "raw" ? "" : "none";
+    }
+
+    function updateTip() {
+      if (!tipEl) return;
+      var visible = !tipDismissed && modeEl.value === "raw" && !String(textEl.value || "").trim();
+      tipEl.style.display = visible ? "" : "none";
     }
 
     function updatePromptVisibility() {
-      // The AI prompt is only relevant before you have HTML — hide it once in AI mode.
-      promptRow.style.display = modeEl.value === "raw" ? "" : "none";
+      // Relevant until HTML is present: hide only for AI-mode with HTML already pasted.
+      if (!promptRow) return;
+      promptRow.style.display = modeEl.value === "ai" && looksLikeHtml(textEl.value) ? "none" : "";
     }
 
     function updatePrintVisibility() {
       var isPrint = TARGETS[ui.target].kind === "print";
       files.trim.parentElement.style.display = isPrint ? "" : "none";
       files.spacing.parentElement.style.display = isPrint ? "" : "none";
+      if (justifyEl) justifyEl.parentElement.style.display = isPrint ? "none" : "";
     }
 
     var wcTimer = null;
@@ -1115,10 +1375,14 @@
             target: ui.target,
             trim: ui.trim,
             spacing: ui.spacing,
+            justify: justifyEl ? justifyEl.checked : true,
             title: files.title.value.trim(),
             author: files.author.value.trim(),
             subtitle: files.subtitle.value.trim(),
             copyright: files.copyright.value.trim(),
+            isbn: files.isbn.value.trim(),
+            publisher: files.publisher.value.trim(),
+            edition: files.edition.value.trim(),
             also: files.also.value.trim(),
             about: files.about.value.trim(),
           },
@@ -1127,13 +1391,75 @@
     }
 
     function wireDraft() {
-      textEl.addEventListener("input", function () { setModeAuto(textEl.value); updateWordCount(); onChange(); });
-      ["title", "author", "subtitle", "copyright", "also", "about"].forEach(function (n) {
+      textEl.addEventListener("input", function () { setModeAuto(textEl.value); updateWordCount(); updateTip(); onChange(); });
+      ["title", "author", "subtitle", "copyright", "isbn", "publisher", "edition", "also", "about"].forEach(function (n) {
         files[n].addEventListener("input", onChange);
       });
       files.trim.addEventListener("change", function () { ui.trim = files.trim.value; onChange(); });
       files.spacing.addEventListener("change", function () { ui.spacing = parseFloat(files.spacing.value) || 1.15; onChange(); });
+      if (justifyEl) justifyEl.addEventListener("change", onChange);
       modeEl.addEventListener("change", function () { applyModeHint(); updateWordCountNow(); onChange(); });
+    }
+
+    pathButtons.forEach(function (b) {
+      b.addEventListener("click", function () {
+        modeEl.value = b.dataset.path;
+        applyModeHint();
+        updateWordCountNow();
+        onChange();
+      });
+    });
+
+    if (tipDismiss) {
+      tipDismiss.addEventListener("click", function () {
+        tipDismissed = true;
+        updateTip();
+        try { chrome.storage.local.set({ kdpFmtTipDismissed: true }); } catch (e) { /* ignore */ }
+      });
+    }
+
+    if (coverBtn && coverInput) {
+      coverBtn.addEventListener("click", function () { coverInput.click(); });
+      coverInput.addEventListener("change", function () {
+        var file = coverInput.files && coverInput.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+          coverPreview.innerHTML = '<span class="kdp-muted">Cover must be under 5 MB.</span>';
+          return;
+        }
+        var reader = new root.FileReader();
+        reader.onload = function () {
+          uiCover = { dataUrl: reader.result, mime: file.type || "image/jpeg", name: file.name };
+          renderCoverPreview();
+          onChange();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    function renderCoverPreview() {
+      if (!coverPreview) return;
+      if (!uiCover) { coverPreview.innerHTML = ""; return; }
+      coverPreview.innerHTML =
+        '<div class="kdp-cover-preview">' +
+        '<img src="' + esc(uiCover.dataUrl) + '" alt="Cover" />' +
+        '<div class="kdp-cover-name">' + esc(uiCover.name) + ' <button type="button" id="kdp-fmt-cover-remove" title="Remove cover">✕</button></div>' +
+        "</div>";
+      var rm = coverPreview.querySelector("#kdp-fmt-cover-remove");
+      if (rm) rm.addEventListener("click", function () { uiCover = null; coverInput.value = ""; renderCoverPreview(); });
+    }
+
+    if (summaryDismiss && summaryEl) {
+      summaryDismiss.addEventListener("click", function () { summaryEl.hidden = true; });
+    }
+
+    if (exampleBtn) {
+      exampleBtn.addEventListener("click", function () {
+        textEl.value = EXAMPLE_MANUSCRIPT;
+        modeEl.value = "raw";
+        applyModeHint();
+        updateWordCountNow();
+        formatNow();
+      });
     }
 
     pillButtons.forEach(function (btn) {
@@ -1185,7 +1511,6 @@
       } else {
         info.push("Reflowable EPUB — no fixed margins or page numbers; chapters start on new pages.");
       }
-      info.push("~" + countWords(text) + " words");
       notesEl.innerHTML =
         info.map(function (n) { return '<div class="kdp-alert kdp-alert-info">' + escHtml(n) + "</div>"; }).join("") +
         warn.map(function (n) { return '<div class="kdp-alert kdp-alert-warn">' + escHtml(n) + "</div>"; }).join("");
@@ -1193,7 +1518,40 @@
 
     function showResults(ok) {
       resultsEl.hidden = false;
+      if (summaryEl) summaryEl.hidden = false;
       dlButtons.forEach(function (b) { b.disabled = !ok; });
+    }
+
+    function buildStructureHtml(ms) {
+      var rows = [];
+      var scenes = 0, quotes = 0, paras = 0;
+      function count(items) {
+        (items || []).forEach(function (p) {
+          if (!p) return;
+          if (p.scene) scenes += 1;
+          else if (p.kind === "quote") quotes += 1;
+          else if (p.text) paras += 1;
+        });
+      }
+      if (!ms.chapters.length || (ms.chapters.length === 1 && !ms.chapters[0].title)) {
+        rows.push('<div class="kdp-muted">No chapters detected — everything was treated as a single section.</div>');
+      }
+      ms.chapters.forEach(function (ch) {
+        var headBits = [];
+        if (ch.label) headBits.push(esc(ch.label));
+        if (ch.subtitle) headBits.push("<i>" + esc(ch.subtitle) + "</i>");
+        var subs = chapterSubs(ch);
+        var subRows = subs.map(function (s) { return '<div class="kdp-inspector-sub">' + esc(s.text) + "</div>"; }).join("");
+        rows.push(
+          "<div class=\"kdp-inspector-ch\"><b>" + (headBits.join(" — ") || esc(ch.title || "Section")) + "</b>" +
+          (subRows ? '<div class="kdp-inspector-subs">' + subRows + "</div>" : "") +
+          "</div>"
+        );
+        count(ch.paragraphs);
+      });
+      count(ms.frontmatter);
+      rows.push('<div class="kdp-muted">~' + paras + " paragraphs · " + scenes + " scene break" + (scenes === 1 ? "" : "s") + " · " + quotes + " quote" + (quotes === 1 ? "" : "s") + "</div>");
+      return rows.join("");
     }
 
     function formatNow() {
@@ -1214,6 +1572,11 @@
         alsoBy: files.also.value.trim(),
         aboutAuthor: files.about.value.trim(),
         lineSpacing: ui.spacing,
+        justify: justifyEl ? justifyEl.checked : true,
+        cover: uiCover,
+        isbn: files.isbn.value.trim(),
+        publisher: files.publisher.value.trim(),
+        edition: files.edition.value.trim(),
       };
       var ms = modeEl.value === "ai" ? htmlManuscriptToModel(raw, opts) : parseManuscript(raw, opts);
       if (!fullText(ms)) {
@@ -1225,6 +1588,7 @@
       ui.lastResult = { ms: ms, opts: opts };
       doneEl.innerHTML = "Formatted ✓ · " + ms.chapters.length + " chapter" + (ms.chapters.length === 1 ? "" : "s") + " · ~" + countWords(fullText(ms)) + " words";
       renderNotes(ms, opts);
+      if (structureEl) structureEl.innerHTML = buildStructureHtml(ms);
       showResults(true);
     }
     runBtn.addEventListener("click", formatNow);
@@ -1240,8 +1604,10 @@
       setTimeout(function () { a.remove(); URLlib.revokeObjectURL(url); }, 1200);
     }
 
-    function download(ext) {
+    async function download(ext) {
       if (!ui.lastResult) return;
+      // Lazy-loaded formatter libs must be ready before building files.
+      if (window.__kdpLibsPromise) await window.__kdpLibsPromise;
       var ms = ui.lastResult.ms;
       var opts = ui.lastResult.opts;
       var base = sanitizeFilename(ms.title || "book");
@@ -1260,12 +1626,12 @@
       }
       try {
         if (ext === "epub") {
-          buildEpub(ms).then(function (blob) { saveBlob(blob, base + ".epub"); saved(); }, failed);
+          buildEpub(ms, opts).then(function (blob) { saveBlob(blob, base + ".epub"); saved(); }, failed);
         } else if (ext === "pdf") {
           if (!root.pdfMake) return failed(new Error("pdfmake not loaded"));
           buildPdf(ms, opts, function (blob) { saveBlob(blob, base + ".pdf"); saved(); });
         } else if (ext === "docx") {
-          buildDocx(ms).then(function (blob) { saveBlob(blob, base + ".docx"); saved(); }, failed);
+          buildDocx(ms, opts).then(function (blob) { saveBlob(blob, base + ".docx"); saved(); }, failed);
         }
       } catch (e) {
         failed(e);
@@ -1282,7 +1648,8 @@
     updateWordCountNow();
     wireDraft();
 
-    chrome.storage.local.get({ kdpFmtDraft: null }, function (st) {
+    chrome.storage.local.get({ kdpFmtDraft: null, kdpFmtTipDismissed: false }, function (st) {
+      tipDismissed = !!(st && st.kdpFmtTipDismissed);
       var d = st && st.kdpFmtDraft;
       if (!d) return;
       ui.target = TARGETS[d.target] ? d.target : ui.target;
@@ -1290,10 +1657,14 @@
       ui.spacing = d.spacing != null ? d.spacing : ui.spacing;
       textEl.value = d.text || "";
       modeEl.value = d.mode === "ai" ? "ai" : "raw";
+      if (justifyEl && d.justify != null) justifyEl.checked = !!d.justify;
       files.title.value = d.title || "";
       files.author.value = d.author || "";
       files.subtitle.value = d.subtitle || "";
       files.copyright.value = d.copyright || "";
+      files.isbn.value = d.isbn || "";
+      files.publisher.value = d.publisher || "";
+      files.edition.value = d.edition || "";
       files.also.value = d.also || "";
       files.about.value = d.about || "";
       setPills(ui.target);
@@ -1302,6 +1673,7 @@
       applyModeHint();
       updatePrintVisibility();
       updateWordCountNow();
+      updateTip();
     });
   }
   // ------------------------------------------------------------------
@@ -1318,6 +1690,7 @@
     looksLikeHtml: looksLikeHtml,
     estimatePages: estimatePages,
     fullText: fullText,
+    splitChapterHeading: splitChapterHeading,
     htmlManuscriptToModel: htmlManuscriptToModel,
     buildAiPrompt: buildAiPrompt,
     bodyParagraphs: bodyParagraphs,

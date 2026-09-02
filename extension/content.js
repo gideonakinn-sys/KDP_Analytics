@@ -3,10 +3,14 @@
 // over the network and Amazon has nothing to block) and serves the data to
 // the side panel on request. No UI is injected into the page.
 //
+// Parsing helpers live in lib/extract.js (loaded first as window.KDPExtract)
+// so the same extraction logic is Node-testable (extract.test.js).
+//
 // Responds to {type: "get-book-data"} with:
 //   { data: <BookData|null>, reason: "ok"|"no-product"|"unparseable", url }
 (() => {
   "use strict";
+  const E = (typeof window !== "undefined" && window.KDPExtract) || null;
 
   const PRICE_SELECTORS = [
     ".a-price .a-offscreen",
@@ -18,36 +22,17 @@
     "#ebook-price",
     "#price",
   ];
-
-  function parsePriceText(t) {
-    let m = String(t || "").match(/[\d,]+\.\d{2}/);
-    if (m) return parseFloat(m[0].replace(/,/g, ""));
-    m = String(t || "").match(/\$?\s*([\d,]+)(?:\s|$|[^\d.])/);
-    if (m) return parseFloat(m[1].replace(/,/g, ""));
-    return null;
-  }
-
-  function parseIntText(t) {
-    const m = String(t || "").match(/[\d,]+/);
-    return m ? parseInt(m[0].replace(/,/g, ""), 10) : null;
-  }
-
-  function detectCurrency(symbolText) {
-    const t = symbolText || "";
-    if (/C\$|CA\$|CAD/i.test(t)) return { code: "CAD", symbol: "C$" };
-    if (/A\$|AU\$|AUD/i.test(t)) return { code: "AUD", symbol: "A$" };
-    if (/£/.test(t)) return { code: "GBP", symbol: "£" };
-    if (/€/.test(t)) return { code: "EUR", symbol: "€" };
-    if (/¥/.test(t)) return { code: "JPY", symbol: "¥" };
-    if (/\$/.test(t)) return { code: "USD", symbol: "$" };
-    return { code: "USD", symbol: "$" };
-  }
+  const PAGE_CONTAINERS = [
+    "#detailBullets_feature_div",
+    "#productDetails_detailBullets_sections1",
+    "#productDetails_techSpec_section_1",
+    "#productDetailsTable",
+    "#productDetails_expanderTables",
+  ];
 
   function extractAsin() {
-    const m = (location.href || "").match(
-      /(?:\/dp\/|\/gp\/product\/|\/product\/|\/gp\/aw\/d\/|\?asin=)([A-Z0-9]{10})/i
-    );
-    if (m) return m[1].toUpperCase();
+    const urlAsin = E ? E.extractAsinFromUrl(location.href) : "";
+    if (urlAsin) return urlAsin;
     const el = document.querySelector("input[name='ASIN'], input[name='asin']");
     const v = el && el.value;
     if (v && /^[A-Z0-9]{10}$/i.test(v)) return v.toUpperCase();
@@ -66,9 +51,9 @@
       const el = document.querySelector(sel);
       if (el) {
         const raw = txt(el);
-        price = parsePriceText(raw);
+        price = E ? E.parsePriceText(raw) : null;
         if (price) {
-          currency = detectCurrency(raw);
+          currency = E ? E.detectCurrency(raw) : currency;
           break;
         }
       }
@@ -76,47 +61,33 @@
 
     let rating = null;
     const ratingEl = document.querySelector("span.a-icon-alt");
-    if (ratingEl) {
-      const m = txt(ratingEl).match(/([\d.]+) out of 5/);
-      if (m) rating = parseFloat(m[1]);
-    }
+    if (ratingEl) rating = E ? E.parseRating(txt(ratingEl)) : null;
     let reviewCount = null;
     const reviewsEl = document.querySelector("#acrCustomerReviewText");
-    if (reviewsEl) reviewCount = parseIntText(txt(reviewsEl));
+    if (reviewsEl) reviewCount = E ? E.parseIntText(txt(reviewsEl)) : null;
 
     let bsr = null;
     let bsrCategory = null;
+    let pageCount = null;
     const detailEl =
       document.querySelector("#detailBullets_feature_div") ||
       document.querySelector("#productDetails_detailBullets_sections1");
     const detailsText = detailEl ? (detailEl.textContent || "").replace(/\s+/g, " ") : "";
-    if (detailsText) {
-      const m = detailsText.match(/#([\d,]+)\s+in\s+([A-Za-z0-9 &.']+)/);
-      if (m) {
-        bsr = parseIntText(m[1]);
-        bsrCategory = (m[2] || "").trim();
-      }
+    if (detailsText && E) {
+      const d = E.parseBsrDetails(detailsText);
+      bsr = d.bsr;
+      bsrCategory = d.bsrCategory;
+      pageCount = d.pageCount;
     }
-
-    // Print length: scan every plausible details container, accept
-    // "Print length: N pages" / "Print length N pages" / "Print length N".
-    let pageCount = null;
-    const PAGE_CONTAINERS = [
-      "#detailBullets_feature_div",
-      "#productDetails_detailBullets_sections1",
-      "#productDetails_techSpec_section_1",
-      "#productDetailsTable",
-      "#productDetails_expanderTables",
-    ];
-    for (const sel of PAGE_CONTAINERS) {
-      const el = document.querySelector(sel);
-      if (!el) continue;
-      const m = (el.textContent || "")
-        .replace(/\s+/g, " ")
-        .match(/print\s*length\s*:?\s*([\d,]+)\s*(?:pages?)(?:\s|$)/i);
-      if (m) {
-        pageCount = parseIntText(m[1]);
-        if (pageCount !== null) break;
+    if (pageCount === null && E) {
+      for (const sel of PAGE_CONTAINERS) {
+        const el = document.querySelector(sel);
+        if (!el) continue;
+        const d = E.parseBsrDetails((el.textContent || "").replace(/\s+/g, " "));
+        if (d.pageCount !== null) {
+          pageCount = d.pageCount;
+          break;
+        }
       }
     }
 
@@ -132,9 +103,7 @@
     }
 
     const pageText = (document.body.innerText || "").slice(0, 20000).toLowerCase();
-    let format = "Paperback";
-    if (/kindle/.test(pageText)) format = "Kindle";
-    else if (/hardcover/.test(pageText)) format = "Hardcover";
+    const format = E ? E.formatFromText(pageText) : "Paperback";
 
     return {
       data: {

@@ -63,6 +63,18 @@
     return (pageData && pageData.currency) || { code: "USD", symbol: "$" };
   }
 
+  // KDP 70% Kindle tier bands + delivery fees, per marketplace (local currency).
+  // US values are from KDP's published help; others are the commonly-published
+  // marketplace bands (verify when adding a new marketplace).
+  const MARKET_TIERS = {
+    USD: { min: 2.99, max: 9.99, delivery: 0.15 },
+    GBP: { min: 2.99, max: 9.99, delivery: 0.1 },
+    EUR: { min: 2.99, max: 9.99, delivery: 0.12 },
+    CAD: { min: 2.99, max: 9.99, delivery: 0.15 },
+    AUD: { min: 2.99, max: 9.99, delivery: 0.2 },
+    JPY: { min: 250, max: 1250, delivery: 20 },
+  };
+
   function engineRun() {
     const cur = currency();
     const fx = FX_RATES[cur.code] || 1;
@@ -72,15 +84,22 @@
       format: overrides.format !== "Auto" ? overrides.format : pageData.format,
       pageCount: overrides.pageCount > 0 ? overrides.pageCount : pageData.pageCount,
     };
-    const a = ENGINE.computeAnalytics({ ...d, price: d.price / fx }); // engine is USD-anchored
-    const loc = (usd) => usd * fx;
+    // Kindle: compute in the page's local currency against that marketplace's
+    // 70% band (KDP tiers are per-marketplace). Print: engine is USD-anchored,
+    // so convert to USD and back.
+    const tier = MARKET_TIERS[cur.code] || MARKET_TIERS.USD;
+    const a =
+      d.format === "Kindle"
+        ? ENGINE.computeAnalytics({ ...d, price: d.price }, { tierMin: tier.min, tierMax: tier.max, deliveryFee: tier.delivery })
+        : ENGINE.computeAnalytics({ ...d, price: d.price / fx });
+    const loc = (v) => (d.format === "Kindle" ? v : v * fx);
     const dec = cur.code === "JPY" ? 0 : 2;
     const sym = cur.symbol;
     const money = (v) => sym + Number(v).toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec });
     const fmt = (v) => (a.royaltyUnknown ? "—" : money(loc(v)));
     const fmtSales = (v, monthly) =>
       monthly ? Math.round(v).toLocaleString() + " units" : v.toFixed(1) + " units";
-    return { a, loc, money, fmt, fmtSales, cur };
+    return { a, loc, money, fmt, fmtSales, cur, tier };
   }
 
   function priceSourceLabel() {
@@ -126,17 +145,12 @@
   }
 
   function aboutHTML() {
-    const cur = currency();
-    const fxNote =
-      cur.code !== "USD"
-        ? `<li>Prices in ${cur.code} are converted to USD with fixed approximate rates for the royalty math, then shown back in ${cur.symbol}.</li>`
-        : "";
     return (
       `<details class="kdp-about"><summary>How is this estimated?</summary><ul>` +
-      `<li>Daily/monthly sales are interpolated from a public BSR→sales heuristic — a directional estimate, not Amazon's real numbers.</li>` +
-      `<li>Royalty: Kindle $2.99–$9.99 uses the 70% tier minus ~$0.15 delivery; otherwise 35%. Print pays 60% of list minus KDP's fixed + per-page print cost, which is why print books need a page count (missing → "—"). Kindle royalty ignores page count.</li>` +
+      `<li>Daily/monthly sales come from a public BSR→sales heuristic — a directional estimate (typically within ±2×), not Amazon's real numbers.</li>` +
+      `<li>Royalty: Kindle uses the 70% tier for prices inside the marketplace's 70% band (e.g. $/£/€2.99–9.99) minus an approximate per-MB delivery fee, otherwise 35%. Print pays 60% of list minus KDP's fixed + per-page print cost, which is why print books need a page count (missing → "—"). Kindle royalty ignores page count.</li>` +
       `<li>Royalty = your payout; gross revenue = list price × sales. A missing price shows "—" on purpose — nothing here is fabricated.</li>` +
-      fxNote +
+      `<li>Non-USD prices display in ${cur.symbol} (approximate fixed FX rates are used only for the USD-side print math); Kindle tiers use the local marketplace band.</li>` +
       `</ul></details>`
     );
   }
@@ -206,7 +220,7 @@
 
   function renderResults() {
     if (!resultsEl) return;
-    const { a, loc, fmt, fmtSales, money } = engineRun();
+    const { a, loc, fmt, fmtSales, money, tier } = engineRun();
     const d = {
       ...pageData,
       price: overrides.price > 0 ? overrides.price : pageData.price,
@@ -260,6 +274,18 @@
       ? row("Est. Print Cost / Unit", a.printCost === null ? "—" : money(loc(a.printCost)))
       : "";
 
+    let tierRow = row("Royalty Tier", "—");
+    if (!a.royaltyUnknown) {
+      if (d.format === "Kindle") {
+        tierRow = row(
+          "Royalty Tier",
+          d.price >= tier.min && d.price <= tier.max ? "70% − delivery " + money(tier.delivery) : "35%"
+        );
+      } else {
+        tierRow = row("Royalty Tier", a.printCost === null ? "60% − print cost (unknown)" : "60% − print cost " + money(loc(a.printCost)));
+      }
+    }
+
     resultsEl.innerHTML =
       warn +
       `<div class="kdp-grid">${grid}</div>` +
@@ -272,6 +298,7 @@
       row("Review Count", Number(d.reviewCount).toLocaleString()) +
       row("BSR Category", esc(d.bsrCategory)) +
       printCostRow +
+      tierRow +
       row("Est. Royalty / Unit", fmt(a.royaltyPerUnit)) +
       row("Est. Daily Royalty", fmt(a.dailyRoyalty)) +
       row("Est. Monthly Royalty", fmt(a.monthlyRoyalty)) +
@@ -383,6 +410,28 @@
   // ------------------------------------------------------------------
   // Tabs (Analytics | Formatter)
   // ------------------------------------------------------------------
+  // Lazy-load the formatter libraries (jszip/pdfmake/vfs) on first use so
+  // Analytics-only users don't pay the ~3.2MB JS cost at panel startup.
+  let formatterLibsPromise = null;
+  function loadFormatterLibs() {
+    if (formatterLibsPromise) return formatterLibsPromise;
+    const scripts = ["lib/jszip.min.js", "lib/pdfmake.min.js", "lib/vfs_fonts.js", "lib/vfs_serif.js"];
+    formatterLibsPromise = new Promise((resolve) => {
+      let i = 0;
+      const next = () => {
+        if (i >= scripts.length) return resolve();
+        const s = document.createElement("script");
+        s.src = scripts[i];
+        s.onload = next;
+        s.onerror = next; // keep going even if one lib fails
+        document.head.appendChild(s);
+        i += 1;
+      };
+      next();
+    });
+    return formatterLibsPromise;
+  }
+
   function initTabs() {
     const bar = document.getElementById("kdp-tabs");
     const analytics = document.getElementById("kdp-body");
@@ -395,7 +444,10 @@
       formatter.hidden = !isFmt;
       buttons.forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
       if (refreshBtn) refreshBtn.style.visibility = isFmt ? "hidden" : "";
-      if (isFmt && window.KDPFormatter) window.KDPFormatter.activate();
+      if (isFmt) {
+        loadFormatterLibs();
+        if (window.KDPFormatter) window.KDPFormatter.activate();
+      }
       try {
         chrome.storage.local.set({ kdpTab: tab });
       } catch (e) {

@@ -43,7 +43,7 @@ Daily/monthly sales + royalty, BSR, gross revenue, competition score/bar, keywor
 Paperback/hardcover royalty = 60% of list − KDP's fixed + **per-page** print cost, so a page count is **required** for print books. If the count can't be read from the page, royalty shows **"—"** until you enter one (the auto-focus jumps to the Page count field). Kindle royalty ignores page count.
 
 ### Currencies
-Price and royalty figures display in the page's currency (`$ £ € ¥ C$ A$`). Non-USD prices are converted to USD with **fixed approximate exchange rates** for the royalty math (labeled as such in the panel's "How is this estimated?" note); they are not silent dollar mis-labels.
+Price and royalty figures display in the page's currency (`$ £ € ¥ C$ A$`). **Kindle royalty tiers now use the marketplace's local band** (e.g. $/£/€ 2.99–9.99) plus a local per-MB delivery fee, so a £9.99 book gets its correct 70% rate. Print royalty routes through the USD-anchored engine with fixed approximate FX (labeled as such in the panel's "How is this estimated?" note).
 
 ### Formatter tab
 The panel's **Formatter** tab typesets your manuscript to each platform (all client-side, offline):
@@ -54,8 +54,15 @@ The panel's **Formatter** tab typesets your manuscript to each platform (all cli
 - **Input**: paste text or Markdown (paste-only — no file upload). Chapters auto-detect from `Chapter N`, `Part`, `Prologue`, `Introduction`, etc. and Markdown `#`/`##` headings.
 - **AI mode**: the "Copy AI prompt" button copies a typesetter prompt + your manuscript; run it in any AI, then paste the returned semantic HTML into **AI-formatted HTML** mode. Pasting HTML-like text auto-switches the mode for you. Your inputs auto-save as a draft across restarts.
 - **In-text markup**: `*italic*`, `_italic_`, `**bold**`, `__bold__`; **scene breaks** = a line of `* * *` / `***` / `#` / `- - -`, or three blank lines (rendered as a centered dinkus with no indent on the next paragraph).
-- **Front & back matter** (Options): subtitle, copyright line (auto `© year author`), "Also By", "About the Author".
+- **Chapter headings**: `Chapter 1: Title`, `Part I — Title`, `Prologue: …` render the number/label prominently (h1, centered) with the title beneath it (h2, centered, tight number→title spacing); bare titles (no chapter tag) render as a single h1. **In-chapter subheaders** (`## Heading`, `### Heading`, or AI-HTML `<h3>/<h4>`) render as left-aligned, bold h3 and appear **nested** in the EPUB TOC (multi-level nav/NCX), as Heading3 in DOCX, and as a `chapterSubheader` in PDF — they never start a new page. EPUB body text uses a 1.2em indent, no paragraph spacing, `line-height: 1.4`, and dark-theme-safe colors.
+- **Options**: subtitle, auto copyright, trim size + line spacing (print only), a **Justify body text** toggle for EPUB, and **metadata** (ISBN, Publisher, Edition/year) that flows into the EPUB OPF and the copyright page.
+- **Cover image** (optional, image-only): embedded as the EPUB cover (`cover.xhtml` + `cover-image` OPF item) and as a full-bleed front cover page in the print PDF. DOCX stays text-only.
+- **Input** starts from a clear choice: **✍️ Paste my manuscript** (raw/Markdown) or **🤖 Let AI structure it** (a 3-step guide: paste → copy prompt → paste the AI's HTML). A dismissible first-run tip and a **Try an example** button get new users going instantly.
 - Print PDF is justified but not hyphenated (pdfmake limitation) — finish from the `.docx` for print-final hyphenation.
+- After Format, a **Structure** panel lists detected chapters → subheaders → paragraph/scene-break/quote counts, so you can verify what was parsed (the summary is dismissible with ✕; it reappears on each Format).
+- The formatter's heavy libraries (JSZip/pdfmake/fonts, ~3.2 MB) are **lazy-loaded** on the first Formatter-tab open, so Analytics-only use stays light.
+
+Formatting & extraction tests: `node extension/formatter.test.js` · `node extension/extract.test.js`
 
 ### AI-assisted formatting (bring-your-own-AI)
 For the most professional structure, let an LLM prepare the manuscript:

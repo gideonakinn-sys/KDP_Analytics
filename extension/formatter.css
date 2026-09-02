@@ -158,8 +158,187 @@
 #kdp-fmt-results[hidden] {
   display: none;
 }
+.kdp-summary-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 12px;
+}
+.kdp-summary-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kdp-summary-row > button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1;
+  padding: 4px;
+  border-radius: 6px;
+}
+.kdp-summary-row > button:hover {
+  background: var(--btn-hover);
+  color: var(--fg);
+}
 #kdp-fmt-done {
   font-weight: 600;
+}
+.kdp-structure {
+  margin-top: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.kdp-structure summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.kdp-inspector-ch {
+  font-size: 0.8rem;
+  margin: 5px 0;
+  color: var(--fg);
+}
+.kdp-inspector-subs {
+  margin-left: 14px;
+  color: var(--muted);
+}
+.kdp-inspector-sub {
+  font-size: 0.76rem;
+  margin: 2px 0;
+}
+
+/* Path choice (paste vs AI) */
+.kdp-path {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.kdp-path-btn {
+  flex: 1;
+  padding: 9px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.kdp-path-btn:hover {
+  background: var(--btn-hover);
+}
+.kdp-path-btn.active {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+
+#kdp-fmt-wizard {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.kdp-wizard-step {
+  font-size: 0.78rem;
+  color: var(--muted);
+  padding: 3px 0;
+}
+.kdp-wizard-step b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 0.7rem;
+  margin-right: 8px;
+}
+
+.kdp-tip {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+@media (prefers-color-scheme: dark) {
+  .kdp-tip {
+    background: #131f38;
+    color: #93c5fd;
+    border-color: #1e3a8a;
+  }
+}
+.kdp-tip button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 2px;
+  margin-left: auto;
+}
+#kdp-fmt-example {
+  margin: 6px 0 0;
+}
+.kdp-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+.kdp-check input {
+  width: auto;
+}
+
+#kdp-fmt-cover-btn {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+}
+.kdp-cover-preview {
+  margin-top: 8px;
+}
+.kdp-cover-preview img {
+  max-width: 100px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: block;
+}
+.kdp-cover-name {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.kdp-cover-name button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.85rem;
+  padding: 2px;
 }
 
 #kdp-fmt-notes {

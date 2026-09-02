@@ -70,10 +70,15 @@
     return rule.fixed + rule.per_page * pages;
   }
 
-  function estimateRoyaltyPerUnit(price, fmt, pageCount) {
+  function estimateRoyaltyPerUnit(price, fmt, pageCount, ctx) {
     if (price <= 0) return 0.0;
     if (fmt === "Kindle") {
-      if (price >= 2.99 && price <= 9.99) return Math.max(price * 0.7 - 0.15, 0);
+      // Optional per-marketplace 70% band + delivery fee (local currency).
+      // When ctx is absent, the USD defaults keep this identical to before.
+      var min = (ctx && ctx.tierMin != null) ? ctx.tierMin : 2.99;
+      var max = (ctx && ctx.tierMax != null) ? ctx.tierMax : 9.99;
+      var delivery = (ctx && ctx.deliveryFee != null) ? ctx.deliveryFee : 0.15;
+      if (price >= min && price <= max) return Math.max(price * 0.7 - delivery, 0);
       return Math.max(price * 0.35, 0);
     }
     var cost = printCostFor(fmt, pageCount);
@@ -180,13 +185,13 @@
     return hits.slice(0, 20);
   }
 
-  function computeAnalytics(data) {
+  function computeAnalytics(data, ctx) {
     var price = Number(data.price) || 0;
     var fmt = data.format || "Paperback";
     var pageCount = data.pageCount ? Number(data.pageCount) : null;
     var bsr = data.bsr ? Number(data.bsr) : 0;
     var reviewCount = data.reviewCount ? Number(data.reviewCount) : 0;
-    var royaltyPerUnit = estimateRoyaltyPerUnit(price, fmt, pageCount);
+    var royaltyPerUnit = estimateRoyaltyPerUnit(price, fmt, pageCount, ctx);
     var dailySales = estimateDailySales(bsr);
     var monthlySales = dailySales * 30;
     var priceMissing = price <= 0;

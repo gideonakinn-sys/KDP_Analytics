@@ -30,7 +30,7 @@
         "https://www.amazon.de/*",
         "https://www.amazon.co.jp/*"
       ],
-      "js": ["content.js"],
+      "js": ["lib/extract.js", "content.js"],
       "run_at": "document_idle"
     }
   ],

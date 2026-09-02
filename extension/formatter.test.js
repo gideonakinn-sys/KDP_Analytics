@@ -94,7 +94,8 @@ ok(emph["word/document.xml"].includes("<w:b/>"), "docx bold run");
 const def = F.pdfDocDefinition(ms, { target: "paperback", trim: "6x9", lineSpacing: 1.15, fontSize: 11 });
 ok(def.pageSize.width === 432 && def.pageSize.height === 648, "6x9 points");
 ok(def.content.some((c) => c.toc), "pdf native toc");
-ok(def.content.some((c) => c.tocItem === true && c.style === "chapterTitle"), "chapter tocItem");
+ok(def.content.some((c) => c.tocItem && c.style === "chapterTitle"), "chapter tocItem");
+ok(typeof def.content.find((c) => c.tocItem && c.style === "chapterTitle").tocItem === "object", "chapter tocItem is an object");
 ok(
   def.content.filter((c) => c.style === "chapterTitle" && c.tocItem).every((c) => c.pageBreak === "before"),
   "chapter pageBreak on the node, not just the style"
@@ -145,6 +146,89 @@ ok(!!pdfK.styles.blockquote && !!pdfK.styles.dedication, "pdf kind styles");
 // ---- AI prompt template ----
 const pr = F.buildAiPrompt({ title: "T", author: "A" }, "MANUSCRIPT TEXT");
 ok(pr.includes('class="book-title"') && pr.includes("class=\"chapter\"") && pr.includes("MANUSCRIPT TEXT"), "ai prompt schema + manuscript");
+
+// ---- chapter number + title split ----
+ok(F.splitChapterHeading("Chapter 1: The Beginning").label === "Chapter 1" && F.splitChapterHeading("Chapter 1: The Beginning").subtitle === "The Beginning", "split chapter:title");
+ok(F.splitChapterHeading("chapter 1: title").label === "Chapter 1", "title-case label");
+const partSplit = F.splitChapterHeading("Part II — Origins");
+ok(partSplit.label === "Part II" && partSplit.subtitle === "Origins", "split part em-dash");
+ok(F.splitChapterHeading("Chapter One").label === "Chapter One" && F.splitChapterHeading("Chapter One").subtitle === "", "no-separator chapter");
+ok(F.splitChapterHeading("The Beginning").label === "The Beginning" && F.splitChapterHeading("The Beginning").subtitle === "", "bare title -> label only");
+ok(F.splitChapterHeading("Prologue: Dawn").label === "Prologue" && F.splitChapterHeading("Prologue: Dawn").subtitle === "Dawn", "prologue split");
+
+// label/subtitle flow into outputs
+const msS = F.parseManuscript("Chapter One: The Beginning\n\nBody text here.\n\nChapter Two\n\nMore text.", {});
+ok(msS.chapters[0].label === "Chapter One" && msS.chapters[0].subtitle === "The Beginning", "raw parse labels");
+ok(msS.chapters[1].label === "Chapter Two" && !msS.chapters[1].subtitle, "raw parse chapter two");
+const epubS = F.epubFiles(msS);
+ok(epubS["OEBPS/chapter-1.xhtml"].includes('<h1 class="with-sub">Chapter One</h1>') && epubS["OEBPS/chapter-1.xhtml"].includes("<h2>The Beginning</h2>"), "epub h1+h2");
+ok(epubS["OEBPS/nav.xhtml"].includes(">Chapter One: The Beginning</a>"), "epub nav combined");
+const docxS = F.docxFiles(msS);
+ok(docxS["word/document.xml"].includes('<w:pStyle w:val="Heading1"/>') && docxS["word/document.xml"].includes('<w:pStyle w:val="Heading2"/>'), "docx heading styles");
+ok(docxS["word/document.xml"].includes('<w:t xml:space="preserve">Chapter One</w:t>') && docxS["word/document.xml"].includes('<w:t xml:space="preserve">The Beginning</w:t>'), "docx label+subtitle text");
+const pdfS = F.pdfDocDefinition(msS, { target: "paperback", trim: "6x9", lineSpacing: 1.15, fontSize: 11 });
+const headNodes = pdfS.content.filter((c) => c.style === "chapterTitle");
+ok(headNodes[0].text === "Chapter One" && headNodes[0].tocItem.text === "Chapter One: The Beginning", "pdf split header + combined toc text");
+ok(pdfS.content.some((c) => c.style === "chapterSubtitle" && c.text === "The Beginning"), "pdf subtitle node");
+ok(!!pdfS.styles.chapterSubtitle, "pdf subtitle style");
+
+// AI-HTML also splits chapter headings
+const aimS = F.htmlManuscriptToModel('<body><section class="chapter"><h1>Chapter Three: The End</h1><p>Done.</p></section></body>', {});
+ok(aimS.chapters[0].label === "Chapter Three" && aimS.chapters[0].subtitle === "The End", "ai html split");
+
+// EPUB justify toggle
+ok(F.epubFiles(msS, { justify: false })["OEBPS/style.css"].includes("text-align: left"), "epub justify off -> left");
+ok(F.epubFiles(msS, { justify: true })["OEBPS/style.css"].includes("text-align: justify"), "epub justify on -> justify");
+ok(F.epubFiles(msS, {})["OEBPS/style.css"].includes("text-align: justify"), "epub default justify");
+
+// ---- in-chapter subheaders ----
+const subMs = F.parseManuscript("Chapter One\n\n## Morning\n\nThe light came.\n\n### Deeper\n\nMore words.", {});
+ok(subMs.chapters[0].paragraphs.some((p) => p.sub === "Morning"), "raw ## -> sub");
+ok(subMs.chapters[0].paragraphs.some((p) => p.sub === "Deeper"), "raw ### -> sub");
+ok(subMs.chapters[0].subs.length === 2, "chapter.subs collected");
+ok(F.parseManuscript("# Top\n\nBody.", {}).chapters[0].label === "Top", "single-hash still chapter");
+const leadMs = F.parseManuscript("## Lead\n\nChapter One\n\nBody.", {});
+ok(leadMs.chapters.length === 1 && leadMs.chapters[0].paragraphs.length === 1 && !leadMs.chapters[0].paragraphs[0].sub, "## before chapter -> plain paragraph");
+const subEpub = F.epubFiles(subMs);
+ok(subEpub["OEBPS/chapter-1.xhtml"].includes('<h3 id="s1">Morning</h3>'), "epub h3 with id");
+ok(subEpub["OEBPS/chapter-1.xhtml"].includes('<h3 id="s2">Deeper</h3>'), "epub h3 second id");
+ok(subEpub["OEBPS/nav.xhtml"].includes("chapter-1.xhtml#s1"), "nav nested sub link");
+ok(subEpub["OEBPS/toc.ncx"].includes('src="chapter-1.xhtml#s1"'), "ncx nested sub");
+ok(subEpub["OEBPS/contents.xhtml"].includes("chapter-1.xhtml#s1"), "contents nested sub link");
+const subDocx = F.docxFiles(subMs);
+ok(subDocx["word/document.xml"].includes('<w:pStyle w:val="Heading3"/>') && subDocx["word/document.xml"].includes("Morning"), "docx Heading3 + text");
+const subPdf = F.pdfDocDefinition(subMs, { target: "paperback", trim: "6x9", lineSpacing: 1.15, fontSize: 11 });
+const subH = subPdf.content.find((c) => c.style === "chapterSubheader");
+ok(!!subH && JSON.stringify(subH.text).indexOf("Morning") !== -1, "pdf subheader node");
+ok(!!subPdf.styles.chapterSubheader, "pdf subheader style");
+// AI-HTML h4 inside a chapter -> sub (not a new chapter)
+const aiSub = F.htmlManuscriptToModel('<body><section class="chapter"><h1>Ch One</h1><h4>Note</h4><p>Body.</p></section><section class="chapter"><h1>Ch Two</h1><p>x</p></section></body>', {});
+ok(aiSub.chapters.length === 2 && aiSub.chapters[0].paragraphs.some((p) => p.sub === "Note"), "ai h4 -> sub, no extra chapter");
+// EPUB CSS polish
+const cs = F.epubFiles(subMs, { justify: true })["OEBPS/style.css"];
+ok(cs.includes("line-height: 1.4"), "epub line-height 1.4");
+ok(cs.includes("text-indent: 1.2em; margin: 0"), "epub indent-only paragraphs");
+ok(cs.includes("h1.with-sub"), "epub with-sub rule");
+ok(!/#111/.test(cs), "epub no fixed dark link color");
+ok(cs.includes("text-align: left; margin: 1.2em 0 .4em"), "epub h3 left style");
+
+// ---- cover + metadata (P2) ----
+const coverOpts = { justify: true, cover: { dataUrl: "data:image/jpeg;base64,AAAA", mime: "image/jpeg", name: "c.jpg" }, isbn: "9781234567890", publisher: "Acme Press", edition: "2026" };
+const cEpub = F.epubFiles(msS, coverOpts);
+ok(!!cEpub["OEBPS/cover.xhtml"] && !!cEpub["OEBPS/images/cover.jpg"], "cover files present");
+ok(cEpub["OEBPS/content.opf"].includes('name="cover" content="cover-img"'), "opf cover meta");
+ok(cEpub["OEBPS/content.opf"].includes("urn:isbn:9781234567890"), "opf isbn");
+ok(cEpub["OEBPS/content.opf"].includes("<dc:publisher>Acme Press</dc:publisher>"), "opf publisher");
+ok(cEpub["OEBPS/content.opf"].includes("<dc:date>2026</dc:date>"), "opf edition/date");
+ok(cEpub["OEBPS/content.opf"].includes('idref="cover"') && cEpub["OEBPS/content.opf"].indexOf('idref="cover"') < cEpub["OEBPS/content.opf"].indexOf('idref="titlepage"'), "cover first in spine");
+const cDocx = F.docxFiles(msS, { target: "paperback", trim: "6x9", lineSpacing: 1.15 });
+ok(cDocx["word/document.xml"].includes('<w:pgSz w:w="8640" w:h="12960"'), "docx trim page size (6x9)");
+ok(cDocx["word/document.xml"].includes('<w:pgMar w:left="1080" w:right="1080" w:top="1080" w:bottom="1080" w:gutter="'), "docx gutter present");
+const cDocxMeta = F.docxFiles(msS, coverOpts);
+ok(cDocxMeta["word/document.xml"].includes("ISBN 9781234567890"), "docx copyright isbn line");
+const cPdf = F.pdfDocDefinition(msS, Object.assign({ target: "paperback" }, coverOpts));
+ok(!!cPdf.content[0].image && String(cPdf.content[0].image).indexOf("data:image/jpeg") === 0, "pdf cover image page first");
+ok(cPdf.content.some((c) => c.text && c.text.indexOf("ISBN 9781234567890") === 0), "pdf copyright isbn line");
 
 // ---- helpers ----
 ok(F.looksLikeHtml('<section class="chapter"><p>x</p></section>') === true, "detect html");
